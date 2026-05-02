@@ -658,6 +658,7 @@ const DEF={
   investment:['ETF 📈','Akcie 📊','Krypto 🪙','Nemovitosti 🏡','Spořicí účet 🏦','Penzijní fond 🎯','Ostatní investice 💎']
 };
 
+const _isNew = !localStorage.getItem('bb8');
 var S=JSON.parse(localStorage.getItem('bb8')||'null')||{cc:{expense:[],income:[],investment:[]},data:{},goals:[],plans:{}};
 let now=new Date(),cY=now.getFullYear(),cM=now.getMonth();
 let txType='expense',txFilter='all',activeTab='overview',editGoalId=null,addGoalId=null;
@@ -685,7 +686,7 @@ if(!S.plans[k0]) S.plans[k0]={
   limits:{'Bydlení 🏠':16000,'Jídlo 🍔':6000,'Zdraví 💊':1500,'Krása 💅':1200,'Předplatné 📱':500,'Zábava 🎮':2000},
   income:{'Plat 💼':52000,'Freelance 💻':5000}
 };
-if(!S.goals.length) S.goals=[
+if(_isNew && !S.goals.length) S.goals=[
   {id:1,name:'Dovolená na Bali',emoji:'🌴',target:80000,saved:23000},
   {id:2,name:'Nový MacBook',    emoji:'💻',target:55000,saved:18000},
   {id:3,name:'Emergency fund',  emoji:'🛡️',target:150000,saved:60000},
