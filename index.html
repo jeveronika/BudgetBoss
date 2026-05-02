@@ -623,15 +623,27 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
       logoutBtn.style.display   = 'inline-flex';
       userInfo.textContent      = '👤 ' + user.displayName;
 
-      const snap = await getDoc(doc(db, 'users', user.uid));
-      if (snap.exists()) {
-        Object.assign(window.S, snap.data().state);
-        window.render();
-        window.toast('Vítej zpět, ' + user.displayName + '! ✓', 'success');
-      } else {
-        // První přihlášení — ulož lokální data do cloudu
-        await setDoc(doc(db, 'users', user.uid), { state: window.S });
-        window.toast('Účet vytvořen ✓', 'success');
+      try {
+        const snap = await getDoc(doc(db, 'users', user.uid));
+        if (snap.exists()) {
+          const cs = snap.data().state;
+          // Explicitní nahrazení každého pole (Object.assign nepokryje prázdná pole)
+          if (cs.cc)                   window.S.cc    = cs.cc;
+          if (cs.data)                 window.S.data  = cs.data;
+          if (Array.isArray(cs.goals)) window.S.goals = cs.goals;
+          if (cs.plans)                window.S.plans = cs.plans;
+          // Synchronizuj localStorage s daty z cloudu
+          localStorage.setItem('bb8', JSON.stringify(window.S));
+          window.render();
+          window.toast('Vítej zpět, ' + user.displayName + '! ✓', 'success');
+        } else {
+          // První přihlášení — ulož lokální data do cloudu
+          await setDoc(doc(db, 'users', user.uid), { state: window.S });
+          window.toast('Účet vytvořen ✓', 'success');
+        }
+      } catch(e) {
+        console.error('Firestore chyba:', e);
+        window.toast('Chyba načítání dat: ' + (e.code || e.message), 'warn');
       }
 
       window.saveToCloud = () =>
