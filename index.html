@@ -1,0 +1,1248 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Budget Boss</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400;1,600&family=Jost:wght@300;400;500;600&display=swap');
+:root{
+  --bg:#fdf8f5;--bg2:#faf3ee;--surface:#fff;--surface2:#fef9f6;
+  --border:#f0e4da;--border2:#e8d5c8;
+  --rose:#d4807a;--rose-light:#f5e8e7;--rose-mid:#e8b4b0;
+  --mauve:#b5788a;--mauve-light:#f0e2e6;
+  --sage:#8aaa8e;--sage-light:#e6f0e7;
+  --gold:#c9a96e;--gold-light:#f5eede;
+  --text:#2d1f1a;--text2:#6b4e47;--muted:#b08c84;
+  --shadow:0 2px 20px rgba(180,100,80,.08);
+  --shadow-h:0 8px 32px rgba(180,100,80,.16);
+  --r:20px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Jost',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px}
+body::before{content:'';position:fixed;top:-200px;right:-200px;width:600px;height:600px;background:radial-gradient(circle,#f5e0db44 0%,transparent 70%);pointer-events:none;z-index:0}
+body::after{content:'';position:fixed;bottom:-150px;left:-150px;width:500px;height:500px;background:radial-gradient(circle,#e6f0e744 0%,transparent 70%);pointer-events:none;z-index:0}
+.app{max-width:1100px;margin:0 auto;padding:28px 24px 110px;position:relative;z-index:1}
+header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px}
+.brand-title{font-family:'Cormorant Garamond',serif;font-size:2.4rem;font-weight:600;line-height:1;letter-spacing:-.5px}
+.brand-title em{color:var(--rose);font-style:italic}
+.brand-sub{font-size:.68rem;letter-spacing:2.5px;text-transform:uppercase;color:var(--muted);margin-top:3px}
+.header-right{display:flex;align-items:center;gap:10px}
+.month-nav{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:50px;padding:8px 16px;box-shadow:var(--shadow)}
+.month-nav button{background:none;border:none;cursor:pointer;color:var(--muted);font-size:1rem;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;transition:all .2s}
+.month-nav button:hover{background:var(--rose-light);color:var(--rose)}
+.month-label{font-family:'Cormorant Garamond',serif;font-size:1.05rem;font-weight:600;min-width:110px;text-align:center}
+.search-wrap{position:relative}
+.search-inp{background:var(--surface);border:1px solid var(--border);border-radius:50px;padding:8px 16px 8px 36px;font-family:'Jost',sans-serif;font-size:.82rem;color:var(--text);outline:none;width:180px;transition:all .25s;box-shadow:var(--shadow)}
+.search-inp:focus{border-color:var(--rose-mid);width:220px}
+.search-inp::placeholder{color:var(--muted)}
+.search-icon{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:.85rem;pointer-events:none}
+.search-results{background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow-h);padding:7px;display:none;position:absolute;top:calc(100% + 6px);right:0;width:290px;z-index:50;max-height:250px;overflow-y:auto}
+.search-results.open{display:block}
+.sr-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:10px;cursor:pointer;transition:background .15s}
+.sr-item:hover{background:var(--bg2)}
+.sr-icon{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:.85rem;flex-shrink:0}
+.sr-info{flex:1;min-width:0}
+.sr-name{font-size:.83rem;font-weight:500}
+.sr-meta{font-size:.68rem;color:var(--muted)}
+.sr-amt{font-size:.8rem;font-weight:600;white-space:nowrap}
+.sr-amt.pos{color:var(--sage)}.sr-amt.neg{color:var(--rose)}.sr-amt.inv{color:var(--gold)}
+
+/* Health bar */
+.health-bar{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:13px 20px;margin-bottom:18px;display:flex;align-items:center;gap:18px;box-shadow:var(--shadow);flex-wrap:wrap}
+.hs-item{display:flex;flex-direction:column;align-items:center;min-width:55px}
+.hs-val{font-family:'Cormorant Garamond',serif;font-size:1.25rem;font-weight:600;line-height:1}
+.hs-lbl{font-size:.6rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-top:2px}
+.hs-div{width:1px;height:30px;background:var(--border);flex-shrink:0}
+.hs-health{flex:1;min-width:180px}
+.hs-head{font-size:.7rem;color:var(--muted);margin-bottom:5px;display:flex;justify-content:space-between}
+.hs-track{height:7px;background:var(--border);border-radius:7px;overflow:hidden}
+.hs-fill{height:100%;border-radius:7px;transition:width .9s cubic-bezier(.4,0,.2,1)}
+.hs-msg{font-size:.71rem;margin-top:4px;font-weight:500}
+
+/* Summary */
+.summary{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}
+.s-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;box-shadow:var(--shadow);position:relative;overflow:hidden;transition:box-shadow .2s,transform .2s}
+.s-card:hover{box-shadow:var(--shadow-h);transform:translateY(-2px)}
+.s-deco{position:absolute;top:-20px;right:-20px;width:80px;height:80px;border-radius:50%;opacity:.1}
+.s-card.income .s-deco{background:var(--sage)}.s-card.expense .s-deco{background:var(--rose)}.s-card.invest .s-deco{background:var(--gold)}.s-card.balance .s-deco{background:var(--mauve)}
+.s-icon{font-size:.95rem;margin-bottom:7px;display:block}
+.s-label{font-size:.63rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);margin-bottom:4px}
+.s-value{font-family:'Cormorant Garamond',serif;font-size:1.7rem;font-weight:600;line-height:1}
+.s-card.income .s-value{color:var(--sage)}.s-card.expense .s-value{color:var(--rose)}.s-card.invest .s-value{color:var(--gold)}.s-card.balance .s-value{color:var(--mauve)}
+.s-sub{font-size:.67rem;color:var(--muted);margin-top:4px}
+.pbar{height:2px;background:var(--border);border-radius:2px;margin-top:9px;overflow:hidden}
+.pfill{height:100%;border-radius:2px;transition:width .9s cubic-bezier(.4,0,.2,1)}
+.income .pfill{background:var(--sage)}.expense .pfill{background:var(--rose)}.invest .pfill{background:var(--gold)}.balance .pfill{background:var(--mauve)}
+
+/* Tabs */
+.tabs{display:flex;gap:0;margin-bottom:16px;background:var(--bg2);border-radius:14px;padding:4px;border:1px solid var(--border)}
+.tab-btn{flex:1;padding:9px 4px;border:none;background:none;border-radius:11px;font-family:'Jost',sans-serif;font-size:.77rem;cursor:pointer;color:var(--muted);transition:all .22s;display:flex;align-items:center;justify-content:center;gap:5px}
+.tab-btn.active{background:var(--surface);color:var(--rose);font-weight:600;box-shadow:0 1px 8px rgba(180,100,80,.12)}
+
+/* Grids */
+.mg{display:grid;grid-template-columns:1.2fr 1fr;gap:16px;margin-bottom:16px}
+.mg2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:20px;box-shadow:var(--shadow)}
+.ptitle{font-family:'Cormorant Garamond',serif;font-size:1.05rem;font-weight:600;color:var(--text);margin-bottom:13px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+
+/* Buttons */
+.add-btn{display:flex;align-items:center;gap:5px;padding:6px 13px;background:var(--rose);border:none;border-radius:50px;color:#fff;font-family:'Jost',sans-serif;font-size:.75rem;font-weight:500;cursor:pointer;transition:all .2s;white-space:nowrap}
+.add-btn:hover{background:var(--mauve);transform:scale(1.03)}
+.add-btn.sec{background:none;border:1px solid var(--border2);color:var(--muted)}
+.add-btn.sec:hover{background:var(--rose-light);border-color:var(--rose-mid);color:var(--rose);transform:none}
+
+/* FAB */
+.fab{position:fixed;bottom:26px;right:26px;width:54px;height:54px;background:linear-gradient(135deg,var(--rose),var(--mauve));border:none;border-radius:50%;color:#fff;font-size:1.6rem;cursor:pointer;box-shadow:0 4px 20px rgba(180,100,80,.4);transition:all .25s;z-index:100;display:flex;align-items:center;justify-content:center}
+.fab:hover{transform:scale(1.1) rotate(45deg);box-shadow:0 6px 28px rgba(180,100,80,.5)}
+
+/* Insights */
+.insight{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:12px;font-size:.79rem;margin-bottom:7px;line-height:1.4}
+.insight.warn{background:#fffbeb;border:1px solid #f0d89a;color:#7a5e18}
+.insight.good{background:var(--sage-light);border:1px solid #b8d4bb;color:#3a6a3e}
+.insight.info{background:var(--rose-light);border:1px solid var(--rose-mid);color:#7a3838}
+.insight-icon{font-size:1.05rem;flex-shrink:0}
+
+/* Tx list */
+.tx-filters{display:flex;gap:5px;margin-bottom:11px;flex-wrap:wrap}
+.filter-btn{padding:5px 12px;border-radius:50px;border:1px solid var(--border);background:none;font-family:'Jost',sans-serif;font-size:.71rem;color:var(--muted);cursor:pointer;transition:all .2s}
+.filter-btn.active{background:var(--rose);border-color:var(--rose);color:#fff}
+.filter-btn:hover:not(.active){border-color:var(--rose-mid);color:var(--rose)}
+.tx-list{display:flex;flex-direction:column;gap:5px;max-height:310px;overflow-y:auto}
+.tx-list::-webkit-scrollbar{width:3px}
+.tx-list::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+.tx-item{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg2);border-radius:12px;border:1px solid transparent;transition:all .15s}
+.tx-item:hover{border-color:var(--border);background:var(--surface2)}
+.tx-item:hover .tx-actions{opacity:1}
+.tx-icon{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:.88rem;flex-shrink:0}
+.tx-info{flex:1;min-width:0}
+.tx-name{font-size:.83rem;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tx-meta{font-size:.67rem;color:var(--muted);margin-top:1px;display:flex;gap:6px}
+.tx-amount{font-weight:600;font-size:.85rem}
+.tx-amount.pos{color:var(--sage)}.tx-amount.neg{color:var(--rose)}.tx-amount.inv{color:var(--gold)}
+.tx-actions{display:flex;gap:2px;opacity:0;transition:opacity .15s}
+.tx-act-btn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:.8rem;padding:3px 5px;border-radius:6px;transition:all .15s}
+.tx-act-btn:hover{color:var(--rose);background:var(--rose-light)}
+.tx-act-btn.edit-btn:hover{color:var(--sage);background:var(--sage-light)}
+
+/* Savings ring */
+.savings-rate{display:flex;align-items:center;gap:14px;padding:13px;background:linear-gradient(135deg,var(--rose-light) 0%,var(--mauve-light) 100%);border-radius:14px;margin-bottom:13px}
+.sr-ring{position:relative;width:58px;height:58px;flex-shrink:0}
+.sr-ring svg{transform:rotate(-90deg)}
+.sr-center{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'Cormorant Garamond',serif;font-size:1.05rem;font-weight:600;color:var(--mauve)}
+.sr-text{font-size:.75rem;color:var(--text2);line-height:1.5}
+.sr-text strong{color:var(--mauve)}
+
+/* Bar chart */
+.bar-chart{display:flex;flex-direction:column;gap:9px}
+.bc-row{display:flex;align-items:center;gap:9px}
+.bc-label{font-size:.7rem;color:var(--muted);width:75px;text-align:right;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bc-bars{flex:1}
+.bc-bar-wrap{height:6px;background:var(--border);border-radius:6px;overflow:hidden}
+.bc-bar{height:100%;border-radius:6px;transition:width .8s cubic-bezier(.4,0,.2,1)}
+.bc-val{font-size:.69rem;font-weight:500;color:var(--text2);white-space:nowrap;width:50px;text-align:right}
+
+/* Hist */
+.hist-chart{display:flex;align-items:flex-end;gap:8px;height:88px}
+.hist-group{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px}
+.hist-bars{display:flex;align-items:flex-end;gap:2px;height:68px}
+.hist-bar{width:10px;border-radius:3px 3px 0 0;transition:height .6s cubic-bezier(.4,0,.2,1);cursor:pointer;position:relative}
+.hist-bar:hover::after{content:attr(data-tip);position:absolute;bottom:calc(100%+4px);left:50%;transform:translateX(-50%);background:var(--text);color:#fff;border-radius:6px;padding:3px 8px;font-size:.67rem;white-space:nowrap;pointer-events:none;z-index:20;font-family:'Jost',sans-serif}
+.hist-bar.inc{background:linear-gradient(to top,var(--sage),#b3d4b6)}.hist-bar.exp{background:linear-gradient(to top,var(--rose),#ebb4b0)}.hist-bar.inv{background:linear-gradient(to top,var(--gold),#dfc190)}
+.hist-label{font-size:.61rem;color:var(--muted)}
+.hist-current .hist-label{color:var(--rose);font-weight:600}
+
+/* Donut */
+.donut-wrap{display:flex;flex-direction:column;align-items:center;gap:13px}
+.donut-svg{width:128px;height:128px}
+.legend-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 13px;width:100%}
+.legend-item{display:flex;align-items:center;gap:6px}
+.legend-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.legend-name{font-size:.71rem;color:var(--muted);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.legend-val{font-size:.71rem;font-weight:600;color:var(--text2)}
+
+/* Goals mini (overview) */
+.goal-mini-list{display:flex;flex-direction:column;gap:7px}
+.goal-mini{display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--bg2);border-radius:12px;border:1px solid transparent;transition:all .15s;cursor:pointer}
+.goal-mini:hover{border-color:var(--rose-mid);background:var(--surface2)}
+.goal-mini-info{flex:1;min-width:0}
+.goal-mini-name{font-size:.82rem;font-weight:500;display:flex;align-items:center;gap:6px;margin-bottom:2px}
+.goal-mini-nums{font-size:.67rem;color:var(--muted)}
+.goal-mini-bar{height:3px;background:var(--border);border-radius:3px;overflow:hidden;margin-top:4px}
+.goal-mini-fill{height:100%;border-radius:3px;transition:width .8s cubic-bezier(.4,0,.2,1)}
+.g-badge{font-size:.65rem;font-weight:600;padding:1px 7px;border-radius:20px}
+.g-badge.active{color:var(--rose);background:var(--rose-light)}.g-badge.done{color:var(--sage);background:var(--sage-light)}
+
+/* Goals full */
+.goals-scroll{display:flex;flex-direction:column;gap:9px;max-height:360px;overflow-y:auto}
+.goals-scroll::-webkit-scrollbar{width:3px}
+.goals-scroll::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+.goal-card{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:12px 13px;transition:all .15s}
+.goal-card:hover{border-color:var(--rose-mid)}
+.goal-card:hover .goal-acts{opacity:1}
+.goal-top{display:flex;align-items:center;gap:9px;margin-bottom:4px}
+.goal-emoji{font-size:1.1rem}.goal-gname{font-size:.84rem;font-weight:500;flex:1}
+.goal-badge{font-size:.68rem;font-weight:600;color:var(--rose);background:var(--rose-light);padding:2px 8px;border-radius:20px;white-space:nowrap}
+.goal-badge.done{background:var(--sage-light);color:var(--sage)}
+.goal-nums{font-size:.7rem;color:var(--muted);margin-bottom:5px;display:flex;justify-content:space-between}
+.goal-bar-wrap{height:5px;background:var(--border);border-radius:5px;overflow:hidden;margin-bottom:8px}
+.goal-bar-fill{height:100%;border-radius:5px;background:linear-gradient(90deg,var(--rose-mid),var(--rose));transition:width .8s cubic-bezier(.4,0,.2,1)}
+.goal-acts{display:flex;gap:5px;opacity:0;transition:opacity .15s}
+.gbtn{flex:1;padding:5px;border-radius:8px;border:1px solid var(--border);background:none;font-family:'Jost',sans-serif;font-size:.69rem;cursor:pointer;color:var(--muted);transition:all .2s;text-align:center}
+.gbtn:hover{border-color:var(--rose-mid);color:var(--rose);background:var(--rose-light)}
+.gbtn.del:hover{border-color:#e08080;color:#c05050;background:#fdf0f0}
+
+/* Budget */
+.budget-row{padding:9px 0;border-bottom:1px solid var(--border)}
+.budget-row:last-child{border-bottom:none}
+.budget-top{display:flex;align-items:center;gap:7px;margin-bottom:5px}
+.bcat-icon{font-size:.9rem;width:22px;text-align:center}.bcat-name{flex:1;font-size:.81rem;font-weight:500}
+.bcat-actual{font-size:.79rem;font-weight:600}.bcat-actual.neg{color:var(--rose)}.bcat-actual.pos{color:var(--sage)}
+.bprog-wrap{display:flex;align-items:center;gap:8px}
+.bprog-bar{flex:1;height:5px;background:var(--border);border-radius:5px;overflow:hidden}
+.bprog-fill{height:100%;border-radius:5px;transition:width .7s cubic-bezier(.4,0,.2,1)}
+.bprog-pct{font-size:.65rem;color:var(--muted);min-width:26px;text-align:right}
+.b-remain{font-size:.67rem;margin-top:2px}
+.b-remain.ok{color:var(--sage)}.b-remain.warn{color:var(--gold)}.b-remain.over{color:var(--rose)}
+.psec{font-family:'Cormorant Garamond',serif;font-size:.93rem;font-weight:600;margin:4px 0 9px;padding-top:4px}
+.psec.sage{color:var(--sage)}.psec.rose{color:var(--rose)}
+.charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+.charts-grid .full{grid-column:span 2}
+
+/* Modals */
+.overlay{display:none;position:fixed;inset:0;background:rgba(45,31,26,.3);backdrop-filter:blur(8px);z-index:200;align-items:center;justify-content:center;padding:16px}
+.overlay.open{display:flex}
+.modal{background:var(--surface);border-radius:24px;padding:26px;width:420px;max-width:100%;box-shadow:0 24px 64px rgba(180,100,80,.22);border:1px solid var(--border);animation:suIn .22s ease}
+.modal-sm{background:var(--surface);border-radius:24px;padding:24px;width:360px;max-width:100%;box-shadow:0 24px 64px rgba(180,100,80,.22);border:1px solid var(--border);animation:suIn .22s ease}
+.modal-lg{background:var(--surface);border-radius:24px;padding:26px;width:500px;max-width:100%;box-shadow:0 24px 64px rgba(180,100,80,.22);border:1px solid var(--border);animation:suIn .22s ease}
+@keyframes suIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+.mtitle{font-family:'Cormorant Garamond',serif;font-size:1.4rem;font-weight:600;color:var(--text);margin-bottom:18px}
+.mtitle em{color:var(--rose);font-style:italic}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.fg{margin-bottom:12px}
+.fg label{display:block;font-size:.64rem;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);margin-bottom:5px}
+.fg input,.fg select{width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:11px;color:var(--text);padding:9px 13px;font-family:'Jost',sans-serif;font-size:.85rem;outline:none;transition:border-color .2s}
+.fg input:focus,.fg select:focus{border-color:var(--rose-mid);background:var(--surface)}
+.type-row{display:flex;gap:6px;margin-bottom:12px}
+.ttype{flex:1;padding:9px 3px;border-radius:11px;border:1px solid var(--border);background:none;font-family:'Jost',sans-serif;font-size:.74rem;font-weight:500;cursor:pointer;color:var(--muted);transition:all .2s;text-align:center}
+.ttype.income.active{background:var(--sage-light);border-color:var(--sage);color:var(--sage)}
+.ttype.expense.active{background:var(--rose-light);border-color:var(--rose);color:var(--rose)}
+.ttype.investment.active{background:var(--gold-light);border-color:var(--gold);color:var(--gold)}
+.ttype.goal.active{background:var(--mauve-light);border-color:var(--mauve);color:var(--mauve)}
+.mactions{display:flex;gap:8px;margin-top:16px}
+.mbtn-cancel{flex:1;padding:10px;border-radius:11px;background:var(--bg2);border:1px solid var(--border);color:var(--muted);cursor:pointer;font-family:'Jost',sans-serif;font-size:.84rem;transition:all .2s}
+.mbtn-cancel:hover{color:var(--text)}
+.mbtn-ok{flex:2;padding:10px;border-radius:11px;background:linear-gradient(135deg,var(--rose) 0%,var(--mauve) 100%);border:none;color:#fff;cursor:pointer;font-family:'Jost',sans-serif;font-size:.84rem;font-weight:600;transition:opacity .2s;letter-spacing:.3px}
+.mbtn-ok:hover{opacity:.88}
+.empty{text-align:center;color:var(--muted);font-size:.79rem;padding:20px 0;line-height:1.7}
+.empty strong{display:block;font-size:1.35rem;margin-bottom:3px}
+
+/* Category manager */
+.modal-tabs{display:flex;gap:0;margin-bottom:13px;background:var(--bg2);border-radius:10px;padding:3px;border:1px solid var(--border)}
+.modal-tab{flex:1;padding:6px;border:none;background:none;border-radius:8px;font-family:'Jost',sans-serif;font-size:.73rem;cursor:pointer;color:var(--muted);transition:all .2s}
+.modal-tab.active{background:var(--surface);color:var(--rose);font-weight:600;box-shadow:0 1px 6px rgba(180,100,80,.1)}
+.cat-manager{display:flex;flex-direction:column;gap:5px;max-height:220px;overflow-y:auto}
+.cat-manager::-webkit-scrollbar{width:3px}
+.cat-manager::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+.cat-row-item{display:flex;align-items:center;gap:7px;padding:6px 9px;background:var(--bg2);border-radius:9px}
+.cat-emoji-inp{width:38px;background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:3px 5px;font-size:.9rem;text-align:center;outline:none;font-family:'Jost',sans-serif}
+.cat-emoji-inp:focus{border-color:var(--rose-mid)}
+.cat-name-inp{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:4px 8px;font-size:.8rem;font-family:'Jost',sans-serif;color:var(--text);outline:none}
+.cat-name-inp:focus{border-color:var(--rose-mid)}
+.cat-del-btn{background:none;border:none;color:var(--border2);cursor:pointer;font-size:.92rem;transition:color .2s;padding:0 2px;flex-shrink:0}
+.cat-del-btn:hover{color:var(--rose)}
+.cat-section-label{font-size:.63rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin:8px 0 3px}
+.new-cat-row{display:flex;gap:5px;align-items:center;margin-top:9px;padding-top:9px;border-top:1px solid var(--border)}
+.cat-save-btn{padding:8px 12px;background:var(--rose-light);border:1px solid var(--rose-mid);border-radius:10px;color:var(--rose);cursor:pointer;font-size:.8rem;transition:all .2s;font-family:'Jost',sans-serif;white-space:nowrap}
+.cat-save-btn:hover{background:var(--rose);color:#fff}
+
+/* Plan modal */
+.plan-scroll{max-height:370px;overflow-y:auto;padding-right:3px}
+.plan-scroll::-webkit-scrollbar{width:3px}
+.plan-scroll::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+.plan-row{display:flex;align-items:center;gap:9px;padding:7px 0;border-bottom:1px solid var(--border)}
+.plan-row:last-child{border-bottom:none}
+.plan-icon{font-size:.93rem;width:24px;text-align:center;flex-shrink:0}
+.plan-name{flex:1;font-size:.81rem;color:var(--text)}
+.plan-input{width:110px;background:var(--bg2);border:1px solid var(--border);border-radius:9px;color:var(--text);padding:6px 10px;font-family:'Jost',sans-serif;font-size:.81rem;outline:none;text-align:right;transition:border-color .2s;flex-shrink:0}
+.plan-input:focus{border-color:var(--rose-mid);background:var(--surface)}
+.plan-sep{border-radius:9px;padding:7px 11px;margin:12px 0 5px;font-family:'Cormorant Garamond',serif;font-size:.9rem;font-weight:600}
+.plan-sep.sage{background:var(--sage-light);color:var(--sage)}.plan-sep.rose{background:var(--rose-light);color:var(--rose)}
+
+/* Toasts */
+.toast-wrap{position:fixed;bottom:90px;right:22px;display:flex;flex-direction:column;gap:7px;z-index:300;pointer-events:none}
+.toast{background:var(--text);color:#fff;border-radius:12px;padding:9px 15px;font-size:.78rem;font-family:'Jost',sans-serif;box-shadow:0 4px 18px rgba(0,0,0,.18);animation:tIn .28s ease;max-width:260px}
+.toast.success{background:#3d6e41}.toast.warn{background:#7a5e18}
+@keyframes tIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+/* KBD hint */
+.kbd{display:inline-block;background:var(--bg2);border:1px solid var(--border);border-radius:5px;padding:1px 6px;font-size:.63rem;font-family:monospace;color:var(--muted);vertical-align:middle}
+
+@media(max-width:700px){
+  .summary{grid-template-columns:1fr 1fr}
+  .mg,.mg2,.charts-grid{grid-template-columns:1fr}
+  .charts-grid .full{grid-column:span 1}
+  .brand-title{font-size:2rem}.form-row{grid-template-columns:1fr}
+  .search-inp{width:130px}
+}
+
+/* Health tooltip */
+.hs-info-btn{font-size:.8rem;color:var(--muted);cursor:pointer;transition:color .2s;user-select:none;line-height:1}
+.hs-info-btn:hover{color:var(--rose)}
+.hs-health{position:relative}
+.hs-tooltip{display:none;position:absolute;top:calc(100% + 10px);left:0;z-index:80;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px;width:260px;box-shadow:0 8px 32px rgba(180,100,80,.15);animation:suIn .2s ease}
+.hs-tooltip.open{display:block}
+.hs-tt-title{font-family:'Cormorant Garamond',serif;font-size:1rem;font-weight:600;color:var(--text);margin-bottom:10px}
+.hs-tt-row{display:flex;align-items:center;gap:8px;padding:4px 0;font-size:.75rem;color:var(--text2)}
+.hs-tt-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.hs-tt-row span:nth-child(2){flex:1}
+.hs-tt-pts{font-weight:600;color:var(--muted);white-space:nowrap}
+</style>
+</head>
+<body>
+<div class="app">
+
+<header>
+  <div>
+    <div class="brand-title">Budget <em>Boss</em></div>
+    <div class="brand-sub">Financial Dashboard</div>
+  </div>
+  <div class="header-right">
+    <span id="userInfo" style="font-size:.72rem;color:var(--muted);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+    <button id="btnLogin" class="add-btn">🔑 Přihlásit</button>
+    <button id="btnLogout" class="add-btn sec" style="display:none">Odhlásit</button>
+    <div class="search-wrap">
+      <span class="search-icon">🔍</span>
+      <input class="search-inp" id="searchInp" type="text" placeholder="Hledat… (Ctrl+K)" oninput="onSearch(this.value)" onblur="setTimeout(closeSearch,180)" autocomplete="off">
+      <div class="search-results" id="searchResults"></div>
+    </div>
+    <div class="month-nav">
+      <button onclick="changeMonth(-1)">&#8249;</button>
+      <span class="month-label" id="monthLabel"></span>
+      <button onclick="changeMonth(1)">&#8250;</button>
+    </div>
+  </div>
+</header>
+
+<!-- Health bar -->
+<div class="health-bar">
+  <div class="hs-item"><div class="hs-val" id="hsIncome" style="color:var(--sage)">—</div><div class="hs-lbl">Příjmy</div></div>
+  <div class="hs-div"></div>
+  <div class="hs-item"><div class="hs-val" id="hsExpense" style="color:var(--rose)">—</div><div class="hs-lbl">Výdaje</div></div>
+  <div class="hs-div"></div>
+  <div class="hs-item"><div class="hs-val" id="hsRate" style="color:var(--mauve)">—</div><div class="hs-lbl">Spoření</div></div>
+  <div class="hs-div"></div>
+  <div class="hs-health">
+    <div class="hs-head">
+      <span style="display:flex;align-items:center;gap:5px">
+        Finanční zdraví
+        <span class="hs-info-btn" id="hsInfoBtn" title="Jak se počítá?">ⓘ</span>
+      </span>
+      <span id="hsPct">—</span>
+    </div>
+    <div class="hs-tooltip" id="hsTooltip">
+      <div class="hs-tt-title">Jak se počítá?</div>
+      <div class="hs-tt-row"><span class="hs-tt-dot" style="background:var(--sage)"></span><span>Zadány příjmy</span><span class="hs-tt-pts">+20 b.</span></div>
+      <div class="hs-tt-row"><span class="hs-tt-dot" style="background:var(--sage)"></span><span>Výdaje &lt; příjmy</span><span class="hs-tt-pts">+20 b.</span></div>
+      <div class="hs-tt-row"><span class="hs-tt-dot" style="background:var(--mauve)"></span><span>Spoření ≥ 20 %</span><span class="hs-tt-pts">+25 b.</span></div>
+      <div class="hs-tt-row"><span class="hs-tt-dot" style="background:var(--mauve)"></span><span>Spoření 10–19 %</span><span class="hs-tt-pts">+12 b.</span></div>
+      <div class="hs-tt-row"><span class="hs-tt-dot" style="background:var(--rose)"></span><span>Máš finanční cíle</span><span class="hs-tt-pts">+15 b.</span></div>
+      <div class="hs-tt-row"><span class="hs-tt-dot" style="background:var(--gold)"></span><span>Nastaveny limity</span><span class="hs-tt-pts">+10 b.</span></div>
+      <div class="hs-tt-row"><span class="hs-tt-dot" style="background:var(--sage)"></span><span>Kladný zůstatek</span><span class="hs-tt-pts">+10 b.</span></div>
+      <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);font-size:.68rem;color:var(--muted)">Maximum: 100 bodů</div>
+    </div>
+    <div class="hs-track"><div class="hs-fill" id="hsFill" style="width:0%"></div></div>
+    <div class="hs-msg" id="hsMsg"></div>
+  </div>
+</div>
+
+<!-- Summary cards -->
+<div class="summary">
+  <div class="s-card income"><div class="s-deco"></div><span class="s-icon">🌿</span><div class="s-label">Příjmy</div><div class="s-value" id="sIncome">0 Kč</div><div class="s-sub" id="sIncomeC">0 položek</div><div class="pbar"><div class="pfill" style="width:100%"></div></div></div>
+  <div class="s-card expense"><div class="s-deco"></div><span class="s-icon">🌸</span><div class="s-label">Výdaje</div><div class="s-value" id="sExpense">0 Kč</div><div class="s-sub" id="sExpenseC">0 položek</div><div class="pbar"><div class="pfill" id="pExpense" style="width:0%"></div></div></div>
+  <div class="s-card invest"><div class="s-deco"></div><span class="s-icon">💎</span><div class="s-label">Investice</div><div class="s-value" id="sInvest">0 Kč</div><div class="s-sub" id="sInvestC">0 položek</div><div class="pbar"><div class="pfill" id="pInvest" style="width:0%"></div></div></div>
+  <div class="s-card balance"><div class="s-deco"></div><span class="s-icon">✨</span><div class="s-label">Zůstatek</div><div class="s-value" id="sBalance">0 Kč</div><div class="s-sub" id="sBalanceSub">—</div><div class="pbar"><div class="pfill" id="pBalance" style="width:0%"></div></div></div>
+</div>
+
+<!-- Tabs -->
+<div class="tabs">
+  <button class="tab-btn active" onclick="switchTab('overview')">📊 Přehled</button>
+  <button class="tab-btn" onclick="switchTab('budget')">🗓 Plán</button>
+  <button class="tab-btn" onclick="switchTab('goals')">🎯 Cíle</button>
+</div>
+
+<!-- OVERVIEW -->
+<div id="tab-overview">
+  <div id="insightArea"></div>
+  <div class="mg">
+    <div class="panel">
+      <div class="ptitle">
+        Transakce
+        <div style="display:flex;align-items:center;gap:7px">
+          <span class="kbd">N</span>
+          <button class="add-btn" onclick="openTxModal()">+ Přidat</button>
+        </div>
+      </div>
+      <div class="tx-filters">
+        <button class="filter-btn active" onclick="setFilter('all',this)">Vše</button>
+        <button class="filter-btn" onclick="setFilter('income',this)">🌿 Příjmy</button>
+        <button class="filter-btn" onclick="setFilter('expense',this)">🌸 Výdaje</button>
+        <button class="filter-btn" onclick="setFilter('investment',this)">💎 Investice</button>
+      </div>
+      <div class="tx-list" id="txList"><div class="empty"><strong>🌸</strong>Zatím žádné transakce.<br>Klikni + Přidat nebo stiskni N.</div></div>
+    </div>
+    <div class="panel">
+      <div class="ptitle">Moje cíle <button class="add-btn sec" onclick="openGoalModal()">+ Cíl</button></div>
+      <div id="goalsMini"><div class="empty"><strong>🎯</strong>Žádné cíle.<br>Klikni a přidej svůj první!</div></div>
+    </div>
+  </div>
+  <div class="mg2">
+    <div class="panel">
+      <div class="ptitle">Míra spoření</div>
+      <div class="savings-rate">
+        <div class="sr-ring">
+          <svg width="58" height="58" viewBox="0 0 58 58">
+            <circle cx="29" cy="29" r="23" fill="none" stroke="#f0e4da" stroke-width="6"/>
+            <circle cx="29" cy="29" r="23" fill="none" stroke="var(--mauve)" stroke-width="6" stroke-linecap="round" stroke-dasharray="144.5" id="srCircle" stroke-dashoffset="144.5"/>
+          </svg>
+          <div class="sr-center" id="srNum">0%</div>
+        </div>
+        <div class="sr-text">z příjmů na<br><strong>investice &amp; úspory</strong><br><span id="srGoalText" style="font-size:.67rem;color:var(--muted)">Cíl: min. 20 %</span><br><span id="srTarget" style="font-size:.72rem;font-weight:600;color:var(--mauve)"></span></div>
+      </div>
+      <div class="ptitle" style="font-size:.88rem;margin-bottom:9px">Trend spoření (5M)</div>
+      <div id="savingsTrend" class="bar-chart"></div>
+    </div>
+    <div class="panel">
+      <div class="ptitle">Struktura výdajů</div>
+      <div style="position:relative;display:flex;flex-direction:column;align-items:center;gap:16px">
+        <div style="position:relative">
+          <svg width="220" height="220" viewBox="0 0 220 220" id="donutSvg2" style="display:block"></svg>
+          <div id="donutCenter" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none">
+            <div id="donutCenterVal" style="font-family:'Cormorant Garamond',serif;font-size:1.6rem;font-weight:600;color:var(--text);line-height:1"></div>
+            <div id="donutCenterLbl" style="font-size:.68rem;color:var(--muted);margin-top:2px;text-align:center;max-width:80px"></div>
+          </div>
+        </div>
+        <div class="legend-grid" id="donutLegend2" style="width:100%"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- BUDGET -->
+<div id="tab-budget" style="display:none">
+  <div class="mg">
+    <div class="panel">
+      <div class="ptitle">Plán kategorií <button class="add-btn" onclick="openPlanModal()">✦ Nastavit</button></div>
+      <p style="font-size:.72rem;color:var(--muted);margin-bottom:13px;line-height:1.6">Nastav plánované příjmy a limity výdajů pro každou kategorii — včetně vlastních.</p>
+      <div id="budgetList"><div class="empty"><strong>🗓</strong>Nastav plán tlačítkem výše.</div></div>
+    </div>
+    <div class="panel">
+      <div class="ptitle">Výdaje — plán vs. skutečnost</div>
+      <div style="display:flex;gap:11px;font-size:.67rem;color:var(--muted);margin-bottom:11px">
+        <span style="display:flex;align-items:center;gap:4px"><span style="width:8px;height:8px;border-radius:2px;background:var(--border2);display:inline-block"></span>Plán</span>
+        <span style="display:flex;align-items:center;gap:4px"><span style="width:8px;height:8px;border-radius:2px;background:var(--rose);display:inline-block"></span>Skutečnost</span>
+      </div>
+      <div id="budgetChart" style="overflow-x:auto"><div class="empty">Nastav limity výdajů</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- GOALS -->
+<div id="tab-goals" style="display:none">
+  <div class="mg">
+    <div class="panel">
+      <div class="ptitle">Finanční cíle <button class="add-btn" onclick="openGoalModal()">+ Přidat cíl</button></div>
+      <p style="font-size:.72rem;color:var(--muted);margin-bottom:11px;line-height:1.5">Vklady do cílů přidej přes <strong>+ Přidat → 🎯 Cíl</strong>. Progress se automaticky aktualizuje.</p>
+      <div class="goals-scroll" id="goalsList"><div class="empty"><strong>🎯</strong>Přidej svůj první finanční cíl!</div></div>
+    </div>
+    <div class="panel">
+      <div class="ptitle">Investiční přehled</div>
+      <div class="bar-chart" id="investChart"><div class="empty"><strong>📈</strong>Žádné investice</div></div>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<!-- FAB -->
+<button class="fab" onclick="openTxModal()" title="Přidat transakci (N)">+</button>
+<div class="toast-wrap" id="toastWrap"></div>
+
+<!-- MODALS -->
+<div class="overlay" id="overlayTx">
+  <div class="modal">
+    <div class="mtitle">Nová <em>transakce</em></div>
+    <div class="type-row">
+      <button class="ttype expense active" id="tt-expense" onclick="setTxType('expense')">🌸 Výdaj</button>
+      <button class="ttype income" id="tt-income" onclick="setTxType('income')">🌿 Příjem</button>
+      <button class="ttype investment" id="tt-investment" onclick="setTxType('investment')">📈 Investice</button>
+      <button class="ttype goal" id="tt-goal" onclick="setTxType('goal')">🎯 Cíl</button>
+    </div>
+    <div class="fg"><label>Popis</label><input id="txName" type="text" placeholder="např. Nájem, Plat…" autocomplete="off"></div>
+    <div class="form-row">
+      <div class="fg"><label>Částka (Kč)</label><input id="txAmount" type="number" placeholder="0" min="0" step="1"></div>
+      <div class="fg"><label>Datum</label><input id="txDate" type="date"></div>
+    </div>
+    <div class="fg" id="catFg"><label>Kategorie</label><select id="txCat"></select></div>
+    <div class="fg" id="goalPickRow" style="display:none"><label>Vyber cíl</label><select id="txGoalPick"></select></div>
+    <div class="fg" style="margin-bottom:0">
+      <button class="add-btn sec" style="width:100%;justify-content:center" onclick="openCatManager()">⚙ Spravovat kategorie</button>
+    </div>
+    <div class="mactions">
+      <button class="mbtn-cancel" onclick="close2('overlayTx')">Zrušit</button>
+      <button class="mbtn-ok" onclick="addTransaction()">Přidat</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="overlayGoal">
+  <div class="modal-sm">
+    <div class="mtitle" id="goalModalTitle">Nový <em>cíl</em></div>
+    <div class="fg"><label>Název cíle</label><input id="goalName" type="text" placeholder="Dovolená, Nové auto…"></div>
+    <div style="display:flex;gap:10px">
+      <div class="fg" style="width:66px"><label>Emoji</label><input id="goalEmoji" type="text" maxlength="2" placeholder="🎯"></div>
+      <div class="fg" style="flex:1"><label>Cílová částka (Kč)</label><input id="goalTarget" type="number" placeholder="50000"></div>
+    </div>
+    <div class="fg"><label>Naspořeno (Kč)</label><input id="goalSaved" type="number" placeholder="0"></div>
+    <div class="mactions">
+      <button class="mbtn-cancel" onclick="close2('overlayGoal')">Zrušit</button>
+      <button class="mbtn-ok" onclick="saveGoal()">Uložit</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="overlayAddGoal">
+  <div class="modal-sm">
+    <div class="mtitle">Přidat <em>úspory</em></div>
+    <div id="addGoalInfo" style="font-size:.82rem;color:var(--muted);margin-bottom:13px;padding:10px;background:var(--bg2);border-radius:10px;line-height:1.5"></div>
+    <div class="fg"><label>Přidat částku (Kč)</label><input id="addGoalAmt" type="number" placeholder="1000" min="1"></div>
+    <div class="mactions">
+      <button class="mbtn-cancel" onclick="close2('overlayAddGoal')">Zrušit</button>
+      <button class="mbtn-ok" onclick="confirmAddGoal()">Přidat ✓</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="overlayPlan">
+  <div class="modal-lg">
+    <div class="mtitle">Nastavit <em>plán</em></div>
+    <p style="font-size:.73rem;color:var(--muted);margin-bottom:13px;line-height:1.5">Výchozí i vlastní kategorie na jednom místě. Prázdné pole = žádný plán.</p>
+    <div class="plan-scroll" id="planRows"></div>
+    <div class="mactions">
+      <button class="mbtn-cancel" onclick="close2('overlayPlan')">Zrušit</button>
+      <button class="mbtn-ok" onclick="savePlan()">Uložit plán</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="overlayCatMgr">
+  <div class="modal">
+    <div class="mtitle">Správa <em>kategorií</em></div>
+    <div class="modal-tabs">
+      <button class="modal-tab active" id="cmTab-expense" onclick="switchCmTab('expense')">🌸 Výdaje</button>
+      <button class="modal-tab" id="cmTab-income" onclick="switchCmTab('income')">🌿 Příjmy</button>
+      <button class="modal-tab" id="cmTab-investment" onclick="switchCmTab('investment')">📈 Investice</button>
+    </div>
+    <div id="catManagerList" class="cat-manager"></div>
+    <div class="new-cat-row">
+      <input id="newCatEmoji" class="cat-emoji-inp" type="text" maxlength="2" placeholder="😊">
+      <input id="newCatNameMgr" class="cat-name-inp" type="text" placeholder="Název nové kategorie…">
+      <button class="cat-save-btn" onclick="addCatFromMgr()">+ Přidat</button>
+    </div>
+    <div class="mactions"><button class="mbtn-ok" onclick="close2('overlayCatMgr')">Hotovo</button></div>
+  </div>
+</div>
+
+<div class="overlay" id="overlayEditTx">
+  <div class="modal">
+    <div class="mtitle">Upravit <em>transakci</em></div>
+    <div class="fg"><label>Popis</label><input id="editTxName" type="text"></div>
+    <div class="form-row">
+      <div class="fg"><label>Částka (Kč)</label><input id="editTxAmount" type="number" min="0"></div>
+      <div class="fg"><label>Datum</label><input id="editTxDate" type="date"></div>
+    </div>
+    <div class="fg"><label>Kategorie</label><select id="editTxCat"></select></div>
+    <div class="mactions">
+      <button class="mbtn-cancel" onclick="close2('overlayEditTx')">Zrušit</button>
+      <button class="mbtn-ok" onclick="saveEditTx()">Uložit</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged }
+    from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+  import { getFirestore, doc, setDoc, getDoc }
+    from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyAo-svGMmJo0hr_Ib4L4lehuidQ1huU0lY",
+    authDomain: "budgetbossplanner.firebaseapp.com",
+    projectId: "budgetbossplanner",
+    storageBucket: "budgetbossplanner.firebasestorage.app",
+    messagingSenderId: "88000151234",
+    appId: "1:88000151234:web:706a586617fc1858ad055b"
+  };
+
+  const app  = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db   = getFirestore(app);
+
+  document.getElementById('btnLogin').addEventListener('click', () =>
+    signInWithPopup(auth, new GoogleAuthProvider()));
+  document.getElementById('btnLogout').addEventListener('click', () =>
+    signOut(auth));
+
+  onAuthStateChanged(auth, async user => {
+    const loginBtn  = document.getElementById('btnLogin');
+    const logoutBtn = document.getElementById('btnLogout');
+    const userInfo  = document.getElementById('userInfo');
+
+    if (user) {
+      userInfo.textContent    = '👤 ' + user.displayName;
+      loginBtn.style.display  = 'none';
+      logoutBtn.style.display = 'inline-flex';
+
+      const snap = await getDoc(doc(db, 'users', user.uid));
+      if (snap.exists()) {
+        // Načti data z cloudu a přepiš lokální stav
+        Object.assign(window.S, snap.data().state);
+        window.render();
+        window.toast('Vítej zpět, ' + user.displayName + '! ✓', 'success');
+      } else {
+        // První přihlášení — ulož lokální data do cloudu
+        await setDoc(doc(db, 'users', user.uid), { state: window.S });
+        window.toast('Účet vytvořen — data uložena do cloudu ✓', 'success');
+      }
+
+      window.saveToCloud = () =>
+        setDoc(doc(db, 'users', user.uid), { state: window.S });
+
+    } else {
+      userInfo.textContent    = '';
+      loginBtn.style.display  = 'inline-flex';
+      logoutBtn.style.display = 'none';
+      window.saveToCloud      = null;
+    }
+  });
+</script>
+
+<script>
+const MONTHS=['Leden','Únor','Březen','Duben','Květen','Červen','Červenec','Srpen','Září','Říjen','Listopad','Prosinec'];
+const MS=['Led','Úno','Bře','Dub','Kvě','Čer','Čvc','Srp','Zář','Říj','Lis','Pro'];
+const PAL=['#d4807a','#8aaa8e','#c9a96e','#b5788a','#89b4c4','#c4a4c4','#a4c4a8','#c4b4a0','#d4a090','#90b490'];
+const DEF={
+  expense:['Bydlení 🏠','Jídlo 🍔','Doprava 🚗','Zábava 🎮','Zdraví 💊','Oblečení 👗','Předplatné 📱','Krása 💅','Cestování ✈️','Vzdělání 📚','Ostatní 📦'],
+  income: ['Plat 💼','Brigáda 🔧','Freelance 💻','Pasivní příjem 💸','Ostatní příjmy 💰'],
+  investment:['ETF 📈','Akcie 📊','Krypto 🪙','Nemovitosti 🏡','Spořicí účet 🏦','Penzijní fond 🎯','Ostatní investice 💎']
+};
+
+var S=JSON.parse(localStorage.getItem('bb8')||'null')||{cc:{expense:[],income:[],investment:[]},data:{},goals:[],plans:{}};
+let now=new Date(),cY=now.getFullYear(),cM=now.getMonth();
+let txType='expense',txFilter='all',activeTab='overview',editGoalId=null,addGoalId=null;
+
+const k0=`${cY}-${cM}`;
+if(!S.data[k0]) S.data[k0]=[
+  {id:1,type:'income',    name:'Plat',             amount:52000,cat:'Plat 💼',       date:fd(new Date(cY,cM,1))},
+  {id:2,type:'income',    name:'Freelance projekt', amount:8000, cat:'Freelance 💻',  date:fd(new Date(cY,cM,5))},
+  {id:3,type:'expense',   name:'Nájem',             amount:14500,cat:'Bydlení 🏠',    date:fd(new Date(cY,cM,1))},
+  {id:4,type:'expense',   name:'Potraviny',          amount:4800, cat:'Jídlo 🍔',      date:fd(new Date(cY,cM,10))},
+  {id:5,type:'expense',   name:'Gym & SPA',          amount:1200, cat:'Zdraví 💊',     date:fd(new Date(cY,cM,3))},
+  {id:6,type:'expense',   name:'Skincare',           amount:890,  cat:'Krása 💅',      date:fd(new Date(cY,cM,8))},
+  {id:7,type:'expense',   name:'Netflix & Spotify',  amount:399,  cat:'Předplatné 📱', date:fd(new Date(cY,cM,12))},
+  {id:8,type:'investment',name:'ETF S&P500',         amount:5000, cat:'ETF 📈',        date:fd(new Date(cY,cM,2))},
+  {id:9,type:'investment',name:'Bitcoin DCA',        amount:2000, cat:'Krypto 🪙',     date:fd(new Date(cY,cM,7))},
+];
+// Migrate old format
+if(S.limits||S.incomePlans){
+  if(!S.plans) S.plans={};
+  S.plans[k0]={limits:S.limits||{},income:S.incomePlans||{}};
+  delete S.limits; delete S.incomePlans;
+}
+if(!S.plans) S.plans={};
+if(!S.plans[k0]) S.plans[k0]={
+  limits:{'Bydlení 🏠':16000,'Jídlo 🍔':6000,'Zdraví 💊':1500,'Krása 💅':1200,'Předplatné 📱':500,'Zábava 🎮':2000},
+  income:{'Plat 💼':52000,'Freelance 💻':5000}
+};
+if(!S.goals.length) S.goals=[
+  {id:1,name:'Dovolená na Bali',emoji:'🌴',target:80000,saved:23000},
+  {id:2,name:'Nový MacBook',    emoji:'💻',target:55000,saved:18000},
+  {id:3,name:'Emergency fund',  emoji:'🛡️',target:150000,saved:60000},
+];
+for(let i=1;i<=5;i++){
+  let m=cM-i,y=cY; if(m<0){m+=12;y--;}
+  const k=`${y}-${m}`;
+  if(!S.data[k]) S.data[k]=[
+    {id:Date.now()+i,    type:'income',    name:'Plat',   amount:50000+Math.round((Math.random()-.4)*8000),cat:'Plat 💼',   date:''},
+    {id:Date.now()+i+100,type:'expense',   name:'Výdaje', amount:20000+Math.round((Math.random()-.3)*5000),cat:'Ostatní 📦',date:''},
+    {id:Date.now()+i+200,type:'investment',name:'ETF',    amount:5000+Math.round((Math.random()-.2)*3000), cat:'ETF 📈',    date:''},
+  ];
+}
+save();
+
+function save(){ localStorage.setItem('bb8',JSON.stringify(S)); if(window.saveToCloud) window.saveToCloud(); }
+// Get plan for a specific month key — falls back to most recent past plan
+function getPlan(key){
+  if(!S.plans) S.plans={};
+  if(S.plans[key]) return S.plans[key];
+  // Find most recent past plan
+  const keys=Object.keys(S.plans).sort();
+  const past=keys.filter(k=>k<=key);
+  if(past.length) return JSON.parse(JSON.stringify(S.plans[past[past.length-1]]));
+  return {limits:{},income:{}};
+}
+function curPlan(){ return getPlan(ck()); }
+function curLimits(){ return curPlan().limits||{}; }
+function curIncome(){ return curPlan().income||{}; }
+function saveCurPlan(limits,income){
+  if(!S.plans) S.plans={};
+  S.plans[ck()]={limits,income};
+}
+function fd(d){ return d.toISOString().slice(0,10); }
+function fmtDate(s){ if(!s)return''; const [y,m,d]=s.split('-'); return d+'.'+m+'.'+y; }
+function ck(){ return `${cY}-${cM}`; }
+function txs(){ return S.data[ck()]||[]; }
+function fmt(n){ return new Intl.NumberFormat('cs-CZ',{maximumFractionDigits:0}).format(n)+' Kč'; }
+function fmtK(n){ return n>=1000?(n/1000).toFixed(n%1000===0?0:1)+'k':String(n); }
+function allCats(t){ return [...DEF[t],...(S.cc[t]||[])]; }
+function icon(cat){ return cat.split(' ').pop()||'📦'; }
+function cname(cat){ return cat.split(' ').slice(0,-1).join(' ')||cat; }
+function cmap(arr){ const m={}; arr.forEach(t=>{m[t.cat]=(m[t.cat]||0)+t.amount;}); return Object.entries(m).sort((a,b)=>b[1]-a[1]); }
+function close2(id){ document.getElementById(id).classList.remove('open'); }
+
+function toast(msg,type=''){
+  const w=document.getElementById('toastWrap'),t=document.createElement('div');
+  t.className='toast'+(type?' '+type:''); t.textContent=msg; w.appendChild(t);
+  setTimeout(()=>{t.style.opacity='0';t.style.transition='opacity .3s';setTimeout(()=>t.remove(),300);},2200);
+}
+
+document.addEventListener('keydown',e=>{
+  const tag=e.target.tagName;
+  if(tag==='INPUT'||tag==='SELECT'||tag==='TEXTAREA') return;
+  if(e.key==='n'||e.key==='N'){e.preventDefault();openTxModal();}
+  if(e.key==='Escape') document.querySelectorAll('.overlay.open').forEach(o=>o.classList.remove('open'));
+});
+document.addEventListener('keydown',e=>{
+  if((e.ctrlKey||e.metaKey)&&e.key==='k'){e.preventDefault();document.getElementById('searchInp').focus();}
+});
+
+// Health tooltip toggle
+document.addEventListener('click',e=>{
+  const btn=document.getElementById('hsInfoBtn');
+  const tip=document.getElementById('hsTooltip');
+  if(!btn||!tip) return;
+  if(btn.contains(e.target)){
+    tip.classList.toggle('open');
+  } else if(!tip.contains(e.target)){
+    tip.classList.remove('open');
+  }
+});
+document.querySelectorAll('.overlay').forEach(el=>{
+  el.addEventListener('click',e=>{if(e.target===el)el.classList.remove('open');});
+});
+
+function changeMonth(d){ cM+=d; if(cM>11){cM=0;cY++;}if(cM<0){cM=11;cY--;} render(); }
+function switchTab(t){
+  activeTab=t;
+  ['overview','budget','goals'].forEach(id=>{
+    document.getElementById('tab-'+id).style.display=id===t?'':'none';
+  });
+  document.querySelectorAll('.tab-btn').forEach((b,i)=>{
+    b.classList.toggle('active',['overview','budget','goals'][i]===t);
+  });
+  render();
+}
+function setFilter(f,el){
+  txFilter=f;
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active'); renderTxList();
+}
+
+function onSearch(q){
+  const res=document.getElementById('searchResults');
+  if(!q.trim()){res.classList.remove('open');return;}
+  const all=[];
+  Object.entries(S.data).forEach(([k,arr])=>arr.forEach(tx=>all.push({...tx,_k:k})));
+  const hits=all.filter(x=>x.name.toLowerCase().includes(q.toLowerCase())||cname(x.cat).toLowerCase().includes(q.toLowerCase())).slice(0,6);
+  if(!hits.length){res.innerHTML='<div style="padding:12px;text-align:center;color:var(--muted);font-size:.77rem">Nic nenalezeno</div>';res.classList.add('open');return;}
+  res.innerHTML=hits.map(x=>{
+    const bg=x.type==='income'?'#e8f5ec':x.type==='investment'?'#faf2e0':'#fdf0ee';
+    const cls=x.type==='income'?'pos':x.type==='investment'?'inv':'neg';
+    const pfx=x.type==='income'?'+':x.type==='investment'?'▲':'-';
+    return '<div class="sr-item" onclick="jumpToTx(\''+x._k+'\')">'+
+      '<div class="sr-icon" style="background:'+bg+'">'+icon(x.cat)+'</div>'+
+      '<div class="sr-info"><div class="sr-name">'+x.name+'</div>'+
+      '<div class="sr-meta">'+cname(x.cat)+(x.date?' · '+fmtDate(x.date):'')+' · '+x._k.split('-').join('/')+'</div></div>'+
+      '<div class="sr-amt '+cls+'">'+pfx+fmtK(x.amount)+'</div></div>';
+  }).join('');
+  res.classList.add('open');
+}
+function closeSearch(){ document.getElementById('searchResults').classList.remove('open'); document.getElementById('searchInp').value=''; }
+function jumpToTx(key){ const [y,m]=key.split('-').map(Number); cY=y;cM=m; closeSearch(); switchTab('overview'); }
+
+function populateCat(){ document.getElementById('txCat').innerHTML=allCats(txType).map(c=>'<option>'+c+'</option>').join(''); }
+function setTxType(t){
+  txType=t;
+  ['expense','income','investment','goal'].forEach(tp=>{const el=document.getElementById('tt-'+tp);if(el)el.classList.toggle('active',tp===t);});
+  const isGoal=t==='goal';
+  document.getElementById('goalPickRow').style.display=isGoal?'':'none';
+  document.getElementById('catFg').style.display=isGoal?'none':'';
+  if(isGoal){
+    const pick=document.getElementById('txGoalPick');
+    pick.innerHTML=S.goals.length?S.goals.map(g=>'<option value="'+g.id+'">'+g.emoji+' '+g.name+'</option>').join(''):'<option value="">Nejprve přidej cíl</option>';
+  } else { populateCat(); }
+}
+function openTxModal(){
+  document.getElementById('txDate').value=fd(new Date());
+  document.getElementById('txName').value='';
+  document.getElementById('txAmount').value='';
+  document.getElementById('goalPickRow').style.display='none';
+  document.getElementById('catFg').style.display='';
+  setTxType('expense');
+  document.getElementById('overlayTx').classList.add('open');
+  setTimeout(()=>document.getElementById('txName').focus(),80);
+}
+function addTransaction(){
+  const name=document.getElementById('txName').value.trim();
+  const amount=parseFloat(document.getElementById('txAmount').value);
+  const date=document.getElementById('txDate').value;
+  if(!name||!amount||amount<=0){toast('Vyplň popis a částku 💡','warn');return;}
+  const k=ck(); if(!S.data[k])S.data[k]=[];
+  if(txType==='goal'){
+    const goalId=parseInt(document.getElementById('txGoalPick').value);
+    const g=S.goals.find(g=>g.id===goalId);
+    if(!g){toast('Nejprve přidej cíl 🎯','warn');return;}
+    S.data[k].push({id:Date.now(),type:'investment',name,amount,cat:g.name+' '+g.emoji,goalId,date});
+    g.saved=Math.min(g.target,g.saved+amount);
+    toast(fmt(amount)+' → '+g.emoji+' '+g.name,'success');
+  } else {
+    const cat=document.getElementById('txCat').value;
+    S.data[k].push({id:Date.now(),type:txType,name,amount,cat,date});
+    toast(name+' — '+fmt(amount)+(txType==='income'?' ✓':''),'success');
+  }
+  save(); close2('overlayTx'); render();
+}
+function deleteTx(id){ const k=ck(); S.data[k]=(S.data[k]||[]).filter(t=>t.id!==id); save(); toast('Smazáno'); render(); }
+
+function openGoalModal(){
+  editGoalId=null;
+  document.getElementById('goalModalTitle').innerHTML='Nový <em>cíl</em>';
+  ['goalName','goalEmoji','goalTarget','goalSaved'].forEach(id=>document.getElementById(id).value=id==='goalEmoji'?'🎯':id==='goalSaved'?'0':'');
+  document.getElementById('overlayGoal').classList.add('open');
+  setTimeout(()=>document.getElementById('goalName').focus(),80);
+}
+function openEditGoalModal(id){
+  const g=S.goals.find(g=>g.id===id); if(!g)return;
+  editGoalId=id;
+  document.getElementById('goalModalTitle').innerHTML='Upravit <em>cíl</em>';
+  document.getElementById('goalName').value=g.name;
+  document.getElementById('goalEmoji').value=g.emoji;
+  document.getElementById('goalTarget').value=g.target;
+  document.getElementById('goalSaved').value=g.saved;
+  document.getElementById('overlayGoal').classList.add('open');
+}
+function saveGoal(){
+  const name=document.getElementById('goalName').value.trim();
+  const target=parseFloat(document.getElementById('goalTarget').value);
+  const saved=parseFloat(document.getElementById('goalSaved').value)||0;
+  const emoji=document.getElementById('goalEmoji').value||'🎯';
+  if(!name||!target){toast('Vyplň název a cíl','warn');return;}
+  if(editGoalId){ const g=S.goals.find(g=>g.id===editGoalId); if(g){g.name=name;g.emoji=emoji;g.target=target;g.saved=saved;} toast('Cíl upraven ✓','success'); }
+  else { S.goals.push({id:Date.now(),name,emoji,target,saved}); toast(emoji+' '+name+' přidán!','success'); }
+  save(); close2('overlayGoal'); render();
+}
+function openAddGoalModal(id){
+  addGoalId=id; const g=S.goals.find(g=>g.id===id); if(!g)return;
+  document.getElementById('addGoalInfo').innerHTML='<strong>'+g.emoji+' '+g.name+'</strong><br>Naspořeno: '+fmt(g.saved)+' z '+fmt(g.target);
+  document.getElementById('addGoalAmt').value='';
+  document.getElementById('overlayAddGoal').classList.add('open');
+  setTimeout(()=>document.getElementById('addGoalAmt').focus(),80);
+}
+function confirmAddGoal(){
+  const amt=parseFloat(document.getElementById('addGoalAmt').value);
+  if(!amt||amt<=0){toast('Zadej částku','warn');return;}
+  const g=S.goals.find(g=>g.id===addGoalId);
+  if(g){g.saved=Math.min(g.target,g.saved+amt);toast(fmt(amt)+' přidáno ✓','success');}
+  save(); close2('overlayAddGoal'); render();
+}
+function deleteGoal(id){ S.goals=S.goals.filter(g=>g.id!==id); save(); toast('Cíl smazán'); render(); }
+
+function openPlanModal(){
+  const plan=curPlan();
+  const lim=plan.limits||{}, inc=plan.income||{};
+  const allInc=[...new Set([...allCats('income'),...Object.keys(inc)])];
+  const allExp=[...new Set([...allCats('expense'),...Object.keys(lim)])];
+  function row(cat,obj,dt){ return '<div class="plan-row"><span class="plan-icon">'+icon(cat)+'</span><span class="plan-name">'+cname(cat)+'</span><input class="plan-input" type="number" min="0" placeholder="—" data-pt="'+dt+'" data-pc="'+cat+'" value="'+(obj[cat]||'')+'"></div>'; }
+  const isInherited=!S.plans[ck()];
+  document.getElementById('planRows').innerHTML=
+    (isInherited?'<div style="font-size:.71rem;color:var(--gold);background:var(--gold-light);border-radius:9px;padding:7px 11px;margin-bottom:10px">📋 Předvyplněno z posledního plánu. Ulož pro uložení tohoto měsíce.</div>':'')+
+    '<div class="plan-sep sage">🌿 Plánované příjmy</div>'+
+    '<div style="font-size:.68rem;color:var(--muted);margin-bottom:7px">Kolik plánuješ vydělat?</div>'+
+    allInc.map(c=>row(c,inc,'income')).join('')+
+    '<div class="plan-sep rose" style="margin-top:4px">🌸 Limity výdajů</div>'+
+    '<div style="font-size:.68rem;color:var(--muted);margin-bottom:7px">Maximální měsíční útrata.</div>'+
+    allExp.map(c=>row(c,lim,'expense')).join('');
+  document.getElementById('overlayPlan').classList.add('open');
+}
+function savePlan(){
+  const newLimits={}, newIncome={};
+  document.querySelectorAll('#planRows input[data-pt]').forEach(inp=>{
+    const type=inp.getAttribute('data-pt'),cat=inp.getAttribute('data-pc'),val=parseFloat(inp.value);
+    if(type==='income'){ if(val>0) newIncome[cat]=val; }
+    else               { if(val>0) newLimits[cat]=val; }
+  });
+  saveCurPlan(newLimits,newIncome);
+  save(); close2('overlayPlan'); toast('Plán pro '+MONTHS[cM]+' uložen ✓','success'); render();
+}
+
+let cmTabType='expense';
+function openCatManager(){
+  const safe=(txType==='goal'||txType==='investment')?'investment':txType==='income'?'income':'expense';
+  cmTabType=safe; document.getElementById('overlayCatMgr').classList.add('open');
+  setTimeout(()=>switchCmTab(safe),10);
+}
+function switchCmTab(type){
+  cmTabType=type;
+  ['expense','income','investment'].forEach(t=>{const el=document.getElementById('cmTab-'+t);if(el)el.classList.toggle('active',t===type);});
+  renderCatManager();
+}
+function renderCatManager(){
+  if(!['expense','income','investment'].includes(cmTabType)) cmTabType='expense';
+  const def=DEF[cmTabType]||[],cust=S.cc[cmTabType]||[];
+  let h='';
+  if(def.length){
+    h+='<div class="cat-section-label">Výchozí kategorie</div>';
+    h+=def.map(cat=>'<div class="cat-row-item"><span style="font-size:.95rem;width:26px;text-align:center">'+icon(cat)+'</span><span style="flex:1;font-size:.8rem;color:var(--muted)">'+cname(cat)+'</span><span style="font-size:.62rem;color:var(--border2)">výchozí</span></div>').join('');
+  }
+  if(cust.length){
+    h+='<div class="cat-section-label">Vlastní kategorie</div>';
+    h+=cust.map((cat,i)=>{const pts=cat.split(' '),em=pts[pts.length-1]||'📦',nm=pts.slice(0,-1).join(' ')||cat;
+      return '<div class="cat-row-item"><input class="cat-emoji-inp" type="text" maxlength="2" value="'+em+'" id="ce-'+i+'" oninput="liveSaveCat('+i+')"><input class="cat-name-inp" type="text" value="'+nm+'" id="cn-'+i+'" oninput="liveSaveCat('+i+')"><button class="cat-del-btn" onclick="deleteCat('+i+')" title="Smazat">×</button></div>';
+    }).join('');
+  }
+  if(!def.length&&!cust.length) h='<div class="empty">Žádné kategorie</div>';
+  document.getElementById('catManagerList').innerHTML=h;
+}
+function liveSaveCat(i){
+  const em=document.getElementById('ce-'+i),nm=document.getElementById('cn-'+i);
+  if(!em||!nm)return;
+  S.cc[cmTabType][i]=(nm.value.trim()||'Bez názvu')+' '+(em.value.trim()||'📦');
+  save(); if(txType===cmTabType)populateCat();
+}
+function deleteCat(i){ S.cc[cmTabType].splice(i,1); save(); renderCatManager(); if(txType===cmTabType)populateCat(); toast('Kategorie smazána'); }
+function addCatFromMgr(){
+  const em=document.getElementById('newCatEmoji').value.trim()||'📦',nm=document.getElementById('newCatNameMgr').value.trim();
+  if(!nm){toast('Zadej název','warn');return;}
+  const nc=nm+' '+em;
+  if(!S.cc[cmTabType].includes(nc))S.cc[cmTabType].push(nc);
+  save(); document.getElementById('newCatEmoji').value=''; document.getElementById('newCatNameMgr').value='';
+  renderCatManager(); if(txType===cmTabType)populateCat(); toast('Kategorie přidána ✓','success');
+}
+
+let editTxId=null;
+function openEditTx(id){
+  const k=ck(),tx=(S.data[k]||[]).find(x=>x.id===id); if(!tx)return;
+  editTxId=id;
+  const ne=document.getElementById('editTxName'),ae=document.getElementById('editTxAmount'),de=document.getElementById('editTxDate'),ce=document.getElementById('editTxCat');
+  if(!ne||!ae||!de||!ce)return;
+  ne.value=tx.name; ae.value=tx.amount; de.value=tx.date||'';
+  if(tx.goalId){
+    ce.innerHTML=S.goals.map(g=>'<option value="'+g.id+'"'+(g.id===tx.goalId?' selected':'')+'>'+g.name+' '+g.emoji+'</option>').join('');
+    ce.setAttribute('data-mode','goal');
+  } else {
+    ce.innerHTML=allCats(tx.type).map(c=>'<option'+(c===tx.cat?' selected':'')+'>'+c+'</option>').join('');
+    ce.setAttribute('data-mode','normal');
+  }
+  document.getElementById('overlayEditTx').classList.add('open');
+  setTimeout(()=>ne.focus(),80);
+}
+function saveEditTx(){
+  const k=ck(),tx=(S.data[k]||[]).find(x=>x.id===editTxId); if(!tx)return;
+  const oldAmt=tx.amount;
+  tx.name=document.getElementById('editTxName').value.trim()||tx.name;
+  tx.amount=parseFloat(document.getElementById('editTxAmount').value)||tx.amount;
+  tx.date=document.getElementById('editTxDate').value;
+  const ce=document.getElementById('editTxCat');
+  if(ce.getAttribute('data-mode')==='goal'){
+    const nid=parseInt(ce.value);
+    if(tx.goalId){const og=S.goals.find(g=>g.id===tx.goalId);if(og)og.saved=Math.max(0,og.saved-oldAmt);}
+    const ng=S.goals.find(g=>g.id===nid);
+    if(ng){ng.saved=Math.min(ng.target,ng.saved+tx.amount);tx.goalId=nid;tx.cat=ng.name+' '+ng.emoji;}
+  } else { tx.cat=ce.value; }
+  save(); close2('overlayEditTx'); toast('Upraveno ✓','success'); render();
+}
+
+// ── RENDER ──
+function render(){
+  document.getElementById('monthLabel').textContent=MONTHS[cM]+' '+cY;
+  const t=txs();
+  const income =t.filter(x=>x.type==='income').    reduce((s,x)=>s+x.amount,0);
+  const expense=t.filter(x=>x.type==='expense').   reduce((s,x)=>s+x.amount,0);
+  const invest =t.filter(x=>x.type==='investment').reduce((s,x)=>s+x.amount,0);
+  const balance=income-expense-invest;
+  const rate=income>0?Math.round((invest/income)*100):0;
+
+  document.getElementById('sIncome').textContent=fmt(income);
+  document.getElementById('sExpense').textContent=fmt(expense);
+  document.getElementById('sInvest').textContent=fmt(invest);
+  document.getElementById('sBalance').textContent=fmt(balance);
+  document.getElementById('sIncomeC').textContent=t.filter(x=>x.type==='income').length+' položek';
+  document.getElementById('sExpenseC').textContent=t.filter(x=>x.type==='expense').length+' položek';
+  document.getElementById('sInvestC').textContent=t.filter(x=>x.type==='investment').length+' položek';
+  document.getElementById('sBalanceSub').textContent=balance>=0?'✓ V plusu':'⚠ V minusu';
+  document.getElementById('pExpense').style.width=(income>0?Math.min(100,(expense/income)*100):0)+'%';
+  document.getElementById('pInvest').style.width=(income>0?Math.min(100,(invest/income)*100):0)+'%';
+  document.getElementById('pBalance').style.width=(income>0?Math.max(0,Math.min(100,Math.abs(balance/income)*100)):0)+'%';
+
+  // Health score
+  let h=0;
+  if(income>0)h+=20; if(expense<income)h+=20;
+  if(rate>=20)h+=25; else if(rate>=10)h+=12;
+  if(S.goals.length>0)h+=15; if(Object.keys(curLimits()).length>0)h+=10; if(balance>0)h+=10;
+  h=Math.min(100,h);
+  const hc=h>=70?'var(--sage)':h>=40?'var(--gold)':'var(--rose)';
+  const hm=h>=80?'💚 Výborné finanční zdraví!':h>=60?'🌿 Dobré — ještě trochu zapracovat':h>=40?'⚠️ Průměrné — nastav si plán':'🌸 Začni přidáním příjmů a cílů';
+  document.getElementById('hsFill').style.cssText='width:'+h+'%;background:'+hc;
+  document.getElementById('hsPct').textContent=h+'%';
+  document.getElementById('hsMsg').textContent=hm; document.getElementById('hsMsg').style.color=hc;
+  document.getElementById('hsIncome').textContent=fmtK(income);
+  document.getElementById('hsExpense').textContent=fmtK(expense);
+  document.getElementById('hsRate').textContent=rate+'%';
+
+  // Savings ring
+  const circ=144.5,offset=circ-(Math.min(rate,100)/100)*circ;
+  document.getElementById('srCircle').style.strokeDashoffset=Math.max(0,offset);
+  document.getElementById('srNum').textContent=rate+'%';
+  document.getElementById('srGoalText').textContent=rate>=20?'✓ Cíl 20 % splněn!':'Cíl: min. 20 % (ještě '+(20-rate)+' %)';
+  document.getElementById('srGoalText').style.color=rate>=20?'var(--sage)':'var(--muted)';
+  // Savings target: how much 20% of this month's income is
+  const srTargetEl=document.getElementById('srTarget');
+  if(srTargetEl){
+    if(income>0){
+      const target20=Math.round(income*0.2);
+      const actual=invest;
+      if(rate>=20){
+        srTargetEl.textContent='✓ Spoříte '+fmt(actual)+' z '+fmt(income);
+        srTargetEl.style.color='var(--sage)';
+      } else {
+        srTargetEl.textContent='20 % = '+fmt(target20)+' · chybí '+fmt(Math.max(0,target20-actual));
+        srTargetEl.style.color='var(--mauve)';
+      }
+    } else {
+      srTargetEl.textContent='';
+    }
+  }
+
+  if(activeTab==='overview'){ renderTxList(); renderGoalsMini(); renderInsights(t,income,expense,invest,rate); renderSavingsTrend(); renderDonut('donutSvg2','donutLegend2',expense,t.filter(x=>x.type==='expense')); }
+  if(activeTab==='budget')   renderBudget(t);
+  if(activeTab==='goals')    { renderGoalsList(t); renderInvest(t); }
+}
+
+function renderTxList(){
+  const t=txs(), filtered=txFilter==='all'?t:t.filter(x=>x.type===txFilter);
+  const el=document.getElementById('txList');
+  if(!filtered.length){el.innerHTML='<div class="empty"><strong>'+(txFilter==='all'?'🌸':'')+'</strong>'+(txFilter==='all'?'Zatím žádné transakce.<br>Klikni + Přidat nebo stiskni N.':'Žádné transakce v této kategorii.')+'</div>';return;}
+  el.innerHTML=[...filtered].reverse().map(x=>{
+    const bg=x.type==='income'?'#e8f5ec':x.type==='investment'?'#faf2e0':'#fdf0ee';
+    const cls=x.type==='income'?'pos':x.type==='investment'?'inv':'neg';
+    const pfx=x.type==='income'?'+':x.type==='investment'?'▲':'-';
+    return '<div class="tx-item">'+
+      '<div class="tx-icon" style="background:'+bg+'">'+icon(x.cat)+'</div>'+
+      '<div class="tx-info"><div class="tx-name">'+x.name+'</div>'+
+      '<div class="tx-meta"><span>'+cname(x.cat)+'</span>'+(x.date?'<span>'+fmtDate(x.date)+'</span>':'')+'</div></div>'+
+      '<div class="tx-amount '+cls+'">'+pfx+fmt(x.amount)+'</div>'+
+      '<div class="tx-actions">'+
+        '<button class="tx-act-btn edit-btn" onclick="openEditTx('+x.id+')" title="Upravit">✏</button>'+
+        '<button class="tx-act-btn" onclick="deleteTx('+x.id+')" title="Smazat">×</button>'+
+      '</div></div>';
+  }).join('');
+}
+
+function renderInsights(t,income,expense,invest,rate){
+  const el=document.getElementById('insightArea');
+  const hints=[];
+  if(income===0) hints.push({type:'info',icon:'💡',msg:'Přidej příjmy za '+MONTHS[cM]+', aby dashboard fungoval naplno.'});
+  if(rate<20&&income>0) hints.push({type:'warn',icon:'💰',msg:'Spoříš '+rate+'% — doporučená hranice je 20 % příjmů.'});
+  if(rate>=20&&income>0) hints.push({type:'good',icon:'🎉',msg:'Skvělé! Spoříš '+rate+'% příjmů — nad doporučenou hranicí.'});
+  const expA={};
+  t.filter(x=>x.type==='expense').forEach(x=>{expA[x.cat]=(expA[x.cat]||0)+x.amount;});
+  const limI=curLimits();
+  const over=Object.keys(limI).filter(c=>expA[c]>limI[c]);
+  if(over.length) hints.push({type:'warn',icon:'⚠️',msg:'Překročen limit: '+over.map(c=>cname(c)).join(', ')+'.'});
+  el.innerHTML=hints.slice(0,2).map(h=>'<div class="insight '+h.type+'"><span class="insight-icon">'+h.icon+'</span>'+h.msg+'</div>').join('');
+}
+
+function renderSavingsTrend(){
+  const months=[];
+  for(let i=4;i>=0;i--){let m=cM-i,y=cY;if(m<0){m+=12;y--;}const k=`${y}-${m}`,t=S.data[k]||[];const inc=t.filter(x=>x.type==='income').reduce((s,x)=>s+x.amount,0);const inv=t.filter(x=>x.type==='investment').reduce((s,x)=>s+x.amount,0);months.push({label:MS[m],rate:inc>0?Math.round((inv/inc)*100):0});}
+  const el=document.getElementById('savingsTrend');
+  const max=Math.max(...months.map(m=>m.rate),20);
+  el.innerHTML=months.map(m=>{const col=m.rate>=20?'var(--sage)':m.rate>=10?'var(--gold)':'var(--rose)';return '<div class="bc-row"><div class="bc-label">'+m.label+'</div><div class="bc-bars"><div class="bc-bar-wrap"><div class="bc-bar" style="width:'+Math.round((m.rate/max)*100)+'%;background:'+col+'"></div></div></div><div class="bc-val">'+m.rate+'%</div></div>';}).join('');
+}
+
+function renderGoalsMini(){
+  const el=document.getElementById('goalsMini');
+  if(!S.goals.length){el.innerHTML='<div class="empty"><strong>🎯</strong>Žádné cíle.<br>Klikni a přidej svůj první!</div>';return;}
+  const cards=S.goals.map(g=>{
+    const pct=Math.min(100,Math.round((g.saved/g.target)*100));
+    const bc=pct>=100?'var(--sage)':pct>=75?'var(--gold)':'var(--rose-mid)';
+    return '<div class="goal-mini" onclick="openAddGoalModal('+g.id+')">'+
+      '<div style="font-size:1.15rem">'+g.emoji+'</div>'+
+      '<div class="goal-mini-info">'+
+        '<div class="goal-mini-name">'+g.name+'<span class="g-badge'+(pct>=100?' done':' active')+'">'+(pct>=100?'✓':pct+'%')+'</span></div>'+
+        '<div class="goal-mini-nums">'+fmt(g.saved)+' / '+fmt(g.target)+'</div>'+
+        '<div class="goal-mini-bar"><div class="goal-mini-fill" style="width:'+pct+'%;background:'+bc+'"></div></div>'+
+      '</div></div>';
+  }).join('');
+  el.innerHTML='<div class="goal-mini-list">'+cards+'</div>';
+}
+
+function goalCard(g){
+  const pct=Math.min(100,Math.round((g.saved/g.target)*100));
+  const bc=pct>=100?'background:var(--sage)':pct>=75?'background:var(--gold)':'';
+  return '<div class="goal-card">'+
+    '<div class="goal-top"><span class="goal-emoji">'+g.emoji+'</span><span class="goal-gname">'+g.name+'</span>'+
+    '<span class="goal-badge'+(pct>=100?' done':'')+'">'+(pct>=100?'✓ Splněno':pct+'%')+'</span></div>'+
+    '<div class="goal-nums"><span>'+fmt(g.saved)+' naspořeno</span><span>cíl: '+fmt(g.target)+'</span></div>'+
+    '<div class="goal-bar-wrap"><div class="goal-bar-fill" style="width:'+pct+'%;'+bc+'"></div></div>'+
+    '<div class="goal-acts">'+
+      '<button class="gbtn" onclick="openAddGoalModal('+g.id+')">💸 Přidat</button>'+
+      '<button class="gbtn" onclick="openEditGoalModal('+g.id+')">✏️ Upravit</button>'+
+      '<button class="gbtn del" onclick="deleteGoal('+g.id+')">× Smazat</button>'+
+    '</div></div>';
+}
+function renderGoalsList(t){
+  const el=document.getElementById('goalsList');
+  if(!S.goals.length){el.innerHTML='<div class="empty"><strong>🎯</strong>Přidej svůj první finanční cíl!</div>';return;}
+  el.innerHTML=S.goals.map(g=>{
+    const linked=(t||[]).filter(x=>x.goalId===g.id);
+    const lh=linked.length?'<div style="margin-top:7px;display:flex;flex-direction:column;gap:4px">'+
+      linked.map(x=>'<div style="display:flex;align-items:center;gap:8px;font-size:.69rem;color:var(--text2);background:var(--bg);border-radius:8px;padding:5px 9px">'+
+        (x.date?'<span style="color:var(--muted)">'+fmtDate(x.date)+'</span>':'')+'<span style="flex:1">'+x.name+'</span>'+
+        '<span style="color:var(--mauve);font-weight:600">+'+fmt(x.amount)+'</span></div>').join('')+'</div>':'';
+    return goalCard(g)+lh;
+  }).join('');
+}
+
+
+function renderDonut(svgId,legId,total,arr){
+  const svg=document.getElementById(svgId),leg=document.getElementById(legId),cats=cmap(arr);
+  const ctrVal=document.getElementById('donutCenterVal'),ctrLbl=document.getElementById('donutCenterLbl');
+  // Default center state
+  function resetCenter(){
+    if(!ctrVal||!ctrLbl)return;
+    ctrVal.textContent=cats.length;
+    ctrLbl.textContent='kategorií';
+    ctrVal.style.color='var(--text)';
+  }
+  if(!cats.length||!total){
+    svg.innerHTML='<text x="110" y="115" text-anchor="middle" font-family="Cormorant Garamond,serif" font-size="15" fill="#b08c84">žádná data</text>';
+    if(leg)leg.innerHTML='';
+    if(ctrVal)ctrVal.textContent='';
+    if(ctrLbl)ctrLbl.textContent='';
+    return;
+  }
+  // Larger donut for the 220×220 viewBox
+  const cx=110,cy=110,r=88,ri=56;
+  let angle=-Math.PI/2,paths='';
+  cats.forEach(([cat,val],i)=>{
+    const sl=(val/total)*2*Math.PI;
+    const x1=cx+r*Math.cos(angle),y1=cy+r*Math.sin(angle);
+    const x2=cx+r*Math.cos(angle+sl),y2=cy+r*Math.sin(angle+sl);
+    const xi1=cx+ri*Math.cos(angle),yi1=cy+ri*Math.sin(angle);
+    const xi2=cx+ri*Math.cos(angle+sl),yi2=cy+ri*Math.sin(angle+sl);
+    const lg=sl>Math.PI?1:0,col=PAL[i%PAL.length];
+    const pct=Math.round((val/total)*100);
+    paths+='<path d="M'+xi1+','+yi1+' L'+x1+','+y1+' A'+r+','+r+' 0 '+lg+',1 '+x2+','+y2+' L'+xi2+','+yi2+' A'+ri+','+ri+' 0 '+lg+',0 '+xi1+','+yi1+'"'+
+      ' fill="'+col+'" opacity=".88" style="cursor:pointer;transition:opacity .15s"'+
+      ' data-name="'+cname(cat)+'" data-val="'+fmt(val)+'" data-pct="'+pct+'" data-col="'+col+'">'+
+      '<title>'+cname(cat)+': '+fmt(val)+' ('+pct+'%)</title></path>';
+    angle+=sl;
+  });
+  svg.innerHTML=paths;
+  resetCenter();
+  // Hover interactions
+  svg.querySelectorAll('path[data-name]').forEach(p=>{
+    p.addEventListener('mouseenter',()=>{
+      if(!ctrVal||!ctrLbl)return;
+      ctrVal.textContent=p.getAttribute('data-val');
+      ctrLbl.innerHTML=p.getAttribute('data-name')+'<br><span style="font-size:.8rem;opacity:.8">'+p.getAttribute('data-pct')+'%</span>';
+      ctrVal.style.fontSize='1.1rem';
+      ctrVal.style.color=p.getAttribute('data-col');
+      // Dim others
+      svg.querySelectorAll('path').forEach(o=>o.style.opacity=o===p?'1':'.35');
+    });
+    p.addEventListener('mouseleave',()=>{
+      resetCenter();
+      if(ctrVal)ctrVal.style.fontSize='1.6rem';
+      svg.querySelectorAll('path').forEach(o=>o.style.opacity='.88');
+    });
+  });
+  if(leg) leg.innerHTML=cats.slice(0,8).map(([cat,val],i)=>
+    '<div class="legend-item"><div class="legend-dot" style="background:'+PAL[i%PAL.length]+'"></div>'+
+    '<div class="legend-name">'+cname(cat)+'</div>'+
+    '<div class="legend-val">'+Math.round((val/total)*100)+'%</div></div>').join('');
+}
+
+function renderBudget(t){
+  const expA={},incA={};
+  t.filter(x=>x.type==='expense').forEach(x=>{expA[x.cat]=(expA[x.cat]||0)+x.amount;});
+  t.filter(x=>x.type==='income').forEach(x=>{incA[x.cat]=(incA[x.cat]||0)+x.amount;});
+  const lim=curLimits(), inc=curIncome();
+  const allInc=[...new Set([...Object.keys(inc),...Object.keys(incA)])];
+  const allExp=[...new Set([...Object.keys(lim),...Object.keys(expA)])];
+  const le=document.getElementById('budgetList'),ce=document.getElementById('budgetChart');
+  if(!allInc.length&&!allExp.length){le.innerHTML='<div class="empty"><strong>🗓</strong>Nastav plán tlačítkem výše.</div>';ce.innerHTML='<div class="empty">—</div>';return;}
+  function pr(cat,actual,plan,isInc){
+    const act=actual||0,lim=plan||0,pct=lim>0?Math.min(120,Math.round((act/lim)*100)):0;
+    const bc=isInc?(pct>=100?'var(--sage)':'var(--sage)'):(pct>100?'var(--rose)':pct>80?'var(--gold)':'var(--sage)');
+    const rem=lim-act;let rc='ok',rt='';
+    if(lim>0){if(isInc){if(act>=lim){rc='ok';rt='✓ Plán splněn';}else if(pct>=80){rc='warn';rt='Zbývá '+fmt(Math.abs(rem))+' do plánu';}else{rc='ok';rt=pct+'% splněno';}}else{if(rem<0){rc='over';rt='Přečerpáno o '+fmt(Math.abs(rem));}else if(pct>=80){rc='warn';rt='Zbývá jen '+fmt(rem);}else{rc='ok';rt='Zbývá '+fmt(rem);}}}
+    return '<div class="budget-row"><div class="budget-top"><span class="bcat-icon">'+icon(cat)+'</span><span class="bcat-name">'+cname(cat)+'</span><span class="bcat-actual '+(isInc?'pos':'neg')+'">'+fmt(act)+'</span>'+(lim?'<span style="font-size:.7rem;color:var(--muted)">/ '+fmt(lim)+'</span>':'')+
+    '</div>'+(lim?'<div class="bprog-wrap"><div class="bprog-bar"><div class="bprog-fill" style="width:'+Math.min(100,pct)+'%;background:'+bc+'"></div></div><span class="bprog-pct">'+pct+'%</span></div><div class="b-remain '+rc+'">'+rt+'</div>':'<div style="font-size:.67rem;color:var(--muted);margin-top:2px">Bez plánu</div>')+'</div>';
+  }
+  let h='';
+  if(allInc.length) h+='<div class="psec sage">🌿 Příjmy</div>'+allInc.map(c=>pr(c,incA[c],inc[c],true)).join('');
+  if(allExp.length) h+='<div class="psec rose" style="margin-top:13px">🌸 Výdaje</div>'+allExp.map(c=>pr(c,expA[c],lim[c],false)).join('');
+  le.innerHTML=h;
+  const items=allExp.filter(c=>lim[c]).map(c=>({cat:c,act:expA[c]||0,plan:lim[c]}));
+  if(!items.length){ce.innerHTML='<div class="empty">Nastav limity výdajů</div>';return;}
+  const bH=12,bG=4,rH=bH*2+bG+15,pL=106,pR=68,pT=5,W=390,iW=W-pL-pR,totH=pT+items.length*rH;
+  const maxV=Math.max(...items.map(c=>Math.max(c.act,c.plan)),1),sX=v=>Math.max(0,Math.min(iW,(v/maxV)*iW));
+  const rows=items.map((c,i)=>{
+    const y=pT+i*rH,pw=sX(c.plan),aw=sX(c.act),over=c.act>c.plan;
+    const lb=icon(c.cat)+' '+(cname(c.cat).length>11?cname(c.cat).slice(0,11)+'…':cname(c.cat));
+    const pb='<rect x="'+pL+'" y="'+(y+1)+'" width="'+pw+'" height="'+bH+'" rx="3" fill="#e8d5c8" data-tip="Plán: '+fmt(c.plan)+'"><title>Plán: '+fmt(c.plan)+'</title></rect>'+(pw>0?'<text x="'+(pL+pw+4)+'" y="'+(y+bH/2+4)+'" font-family="Jost,sans-serif" font-size="9" fill="#b08c84">'+fmtK(c.plan)+'</text>':'');
+    const ab='<rect x="'+pL+'" y="'+(y+bH+bG+1)+'" width="'+aw+'" height="'+bH+'" rx="3" fill="'+(over?'#d4807a':'#e8b4b0')+'" data-tip="Skutečnost: '+fmt(c.act)+'"><title>Skutečnost: '+fmt(c.act)+'</title></rect>'+(aw>0?'<text x="'+(pL+aw+4)+'" y="'+(y+bH+bG+bH/2+4)+'" font-family="Jost,sans-serif" font-size="9" fill="'+(over?'#d4807a':'#b08c84')+'">'+fmtK(c.act)+'</text>':'');
+    const rl='<text x="'+(pL-7)+'" y="'+(y+bH+bG/2+4)+'" text-anchor="end" font-family="Jost,sans-serif" font-size="9.5" fill="#6b4e47">'+lb+'</text>';
+    const sep=i<items.length-1?'<line x1="0" y1="'+(y+rH-1)+'" x2="'+W+'" y2="'+(y+rH-1)+'" stroke="#f0e4da" stroke-width="1"/>':'';
+    return rl+pb+ab+sep;
+  }).join('');
+  ce.innerHTML='<svg width="100%" viewBox="0 0 '+W+' '+totH+'" style="display:block">'+rows+'</svg>';
+  const svg=ce.querySelector('svg');if(!svg)return;
+  let tip=ce.querySelector('.chart-tip');
+  if(!tip){tip=document.createElement('div');tip.className='chart-tip';tip.style.cssText='position:absolute;background:#2d1f1a;color:#fff;border-radius:8px;padding:4px 10px;font-size:.72rem;font-family:Jost,sans-serif;pointer-events:none;opacity:0;transition:opacity .15s;white-space:nowrap;z-index:50';ce.style.position='relative';ce.appendChild(tip);}
+  svg.querySelectorAll('rect[data-tip]').forEach(r=>{
+    r.addEventListener('mouseenter',()=>{tip.textContent=r.getAttribute('data-tip');tip.style.opacity='1';});
+    r.addEventListener('mousemove',e=>{const b=ce.getBoundingClientRect();tip.style.left=(e.clientX-b.left+10)+'px';tip.style.top=(e.clientY-b.top-28)+'px';});
+    r.addEventListener('mouseleave',()=>tip.style.opacity='0');
+  });
+}
+
+
+
+function renderInvest(t){
+  const el=document.getElementById('investChart');
+  const inv=t.filter(x=>x.type==='investment');
+  if(!inv.length){el.innerHTML='<div class="empty"><strong>📈</strong>Žádné investice ani vklady do cílů.</div>';return;}
+  const gT=inv.filter(x=>x.goalId).reduce((s,x)=>s+x.amount,0);
+  const items=[...cmap(inv.filter(x=>!x.goalId)).map(([cat,val])=>({label:cname(cat),val,col:'var(--gold)',icon:icon(cat)})),...(gT>0?[{label:'Vklady do cílů',val:gT,col:'var(--mauve)',icon:'🎯'}]:[])].sort((a,b)=>b.val-a.val);
+  const max=items[0]?.val||1;
+  el.innerHTML=items.map(item=>'<div class="bc-row"><div class="bc-label">'+item.icon+' '+item.label+'</div><div class="bc-bars"><div class="bc-bar-wrap"><div class="bc-bar" style="width:'+Math.round((item.val/max)*100)+'%;background:'+item.col+'"></div></div></div><div class="bc-val">'+fmt(item.val)+'</div></div>').join('');
+}
+
+render();
+</script>
+</body>
+</html>
