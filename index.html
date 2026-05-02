@@ -300,7 +300,20 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
 </style>
 </head>
 <body>
-<div class="app">
+<div id="loginScreen" style="position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:999">
+  <div style="text-align:center;padding:44px 40px;background:var(--surface);border-radius:28px;border:1px solid var(--border);box-shadow:0 24px 64px rgba(180,100,80,.18);max-width:380px;width:90%">
+    <div style="font-family:'Cormorant Garamond',serif;font-size:3rem;font-weight:600;line-height:1;margin-bottom:6px">Budget <em style="color:var(--rose);font-style:italic">Boss</em></div>
+    <div style="font-size:.65rem;letter-spacing:2.5px;text-transform:uppercase;color:var(--muted);margin-bottom:28px">Financial Dashboard</div>
+    <p style="font-size:.83rem;color:var(--text2);line-height:1.7;margin-bottom:30px">Přihlas se přes Google a sleduj své finance bezpečně uložené v cloudu.</p>
+    <button id="btnLogin" style="display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:13px 20px;background:linear-gradient(135deg,var(--rose),var(--mauve));border:none;border-radius:14px;color:#fff;font-family:'Jost',sans-serif;font-size:.88rem;font-weight:600;cursor:pointer;transition:opacity .2s;letter-spacing:.3px">
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.716v2.259h2.908C16.658 14.017 17.64 11.71 17.64 9.2z" fill="rgba(255,255,255,.95)"/><path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z" fill="rgba(255,255,255,.8)"/><path d="M3.964 10.706A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.706V4.962H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.038l3.007-2.332z" fill="rgba(255,255,255,.7)"/><path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.962L3.964 6.294C4.672 4.169 6.656 3.58 9 3.58z" fill="rgba(255,255,255,.6)"/></svg>
+      Přihlásit se přes Google
+    </button>
+    <p style="font-size:.64rem;color:var(--muted);margin-top:16px;line-height:1.6">Tvá data jsou bezpečně uložena v Google Firestore.<br>Přihlašuješ se přes svůj existující Google účet.</p>
+  </div>
+</div>
+
+<div class="app" style="display:none">
 
 <header>
   <div>
@@ -309,7 +322,6 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
   </div>
   <div class="header-right">
     <span id="userInfo" style="font-size:.72rem;color:var(--muted);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
-    <button id="btnLogin" class="add-btn">🔑 Přihlásit</button>
     <button id="btnLogout" class="add-btn sec" style="display:none">Odhlásit</button>
     <div class="search-wrap">
       <span class="search-icon">🔍</span>
@@ -595,35 +607,39 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
     signOut(auth));
 
   onAuthStateChanged(auth, async user => {
-    const loginBtn  = document.getElementById('btnLogin');
-    const logoutBtn = document.getElementById('btnLogout');
-    const userInfo  = document.getElementById('userInfo');
+    const loginScreen = document.getElementById('loginScreen');
+    const appEl       = document.querySelector('.app');
+    const logoutBtn   = document.getElementById('btnLogout');
+    const userInfo    = document.getElementById('userInfo');
 
     if (user) {
-      userInfo.textContent    = '👤 ' + user.displayName;
-      loginBtn.style.display  = 'none';
-      logoutBtn.style.display = 'inline-flex';
+      // Skryj login, zobraz dashboard
+      loginScreen.style.display = 'none';
+      appEl.style.display       = 'block';
+      logoutBtn.style.display   = 'inline-flex';
+      userInfo.textContent      = '👤 ' + user.displayName;
 
       const snap = await getDoc(doc(db, 'users', user.uid));
       if (snap.exists()) {
-        // Načti data z cloudu a přepiš lokální stav
         Object.assign(window.S, snap.data().state);
         window.render();
         window.toast('Vítej zpět, ' + user.displayName + '! ✓', 'success');
       } else {
         // První přihlášení — ulož lokální data do cloudu
         await setDoc(doc(db, 'users', user.uid), { state: window.S });
-        window.toast('Účet vytvořen — data uložena do cloudu ✓', 'success');
+        window.toast('Účet vytvořen ✓', 'success');
       }
 
       window.saveToCloud = () =>
         setDoc(doc(db, 'users', user.uid), { state: window.S });
 
     } else {
-      userInfo.textContent    = '';
-      loginBtn.style.display  = 'inline-flex';
-      logoutBtn.style.display = 'none';
-      window.saveToCloud      = null;
+      // Skryj dashboard, zobraz login
+      loginScreen.style.display = 'flex';
+      appEl.style.display       = 'none';
+      logoutBtn.style.display   = 'none';
+      userInfo.textContent      = '';
+      window.saveToCloud        = null;
     }
   });
 </script>
