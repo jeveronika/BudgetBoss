@@ -602,7 +602,11 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
   const db   = getFirestore(app);
 
   document.getElementById('btnLogin').addEventListener('click', () =>
-    signInWithPopup(auth, new GoogleAuthProvider()));
+    signInWithPopup(auth, new GoogleAuthProvider())
+      .catch(err => {
+        console.error('Login error:', err.code, err.message);
+        window.toast('Chyba přihlášení: ' + err.code, 'warn');
+      }));
   document.getElementById('btnLogout').addEventListener('click', () =>
     signOut(auth));
 
