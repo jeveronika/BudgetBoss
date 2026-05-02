@@ -23,18 +23,19 @@ body{font-family:'Jost',sans-serif;background:var(--bg);color:var(--text);min-he
 body::before{content:'';position:fixed;top:-200px;right:-200px;width:600px;height:600px;background:radial-gradient(circle,#f5e0db44 0%,transparent 70%);pointer-events:none;z-index:0}
 body::after{content:'';position:fixed;bottom:-150px;left:-150px;width:500px;height:500px;background:radial-gradient(circle,#e6f0e744 0%,transparent 70%);pointer-events:none;z-index:0}
 .app{max-width:1100px;margin:0 auto;padding:28px 24px 110px;position:relative;z-index:1}
-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px}
+header{display:flex;flex-direction:column;margin-bottom:16px;gap:8px}
+.header-top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.header-user{display:flex;align-items:center;gap:10px;flex-shrink:0}
 .brand-title{font-family:'Cormorant Garamond',serif;font-size:2.4rem;font-weight:600;line-height:1;letter-spacing:-.5px}
 .brand-title em{color:var(--rose);font-style:italic}
 .brand-sub{font-size:.68rem;letter-spacing:2.5px;text-transform:uppercase;color:var(--muted);margin-top:3px}
-.header-right{display:flex;align-items:center;gap:10px}
 .month-nav{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:50px;padding:8px 16px;box-shadow:var(--shadow)}
 .month-nav button{background:none;border:none;cursor:pointer;color:var(--muted);font-size:1rem;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;transition:all .2s}
 .month-nav button:hover{background:var(--rose-light);color:var(--rose)}
 .month-label{font-family:'Cormorant Garamond',serif;font-size:1.05rem;font-weight:600;min-width:110px;text-align:center}
 .search-wrap{position:relative}
-.search-inp{background:var(--surface);border:1px solid var(--border);border-radius:50px;padding:8px 16px 8px 36px;font-family:'Jost',sans-serif;font-size:.82rem;color:var(--text);outline:none;width:180px;transition:all .25s;box-shadow:var(--shadow)}
-.search-inp:focus{border-color:var(--rose-mid);width:220px}
+.search-inp{background:var(--surface);border:1px solid var(--border);border-radius:50px;padding:8px 16px 8px 36px;font-family:'Jost',sans-serif;font-size:.82rem;color:var(--text);outline:none;width:260px;transition:all .25s;box-shadow:var(--shadow)}
+.search-inp:focus{border-color:var(--rose-mid);width:320px}
 .search-inp::placeholder{color:var(--muted)}
 .search-icon{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:.85rem;pointer-events:none}
 .search-results{background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow-h);padding:7px;display:none;position:absolute;top:calc(100% + 6px);right:0;width:290px;z-index:50;max-height:250px;overflow-y:auto}
@@ -281,7 +282,7 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
 /* Overview 2-column layout */
 .overview-cols{display:grid;grid-template-columns:1.4fr 1fr;gap:16px;align-items:start;margin-bottom:16px}
 .ov-right{display:flex;flex-direction:column;gap:16px}
-.ov-tx .tx-list{max-height:560px}
+.ov-tx .tx-list{max-height:720px}
 /* Dismissable insight */
 .insight{position:relative;padding-right:34px}
 .insight-close{position:absolute;right:9px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:1rem;opacity:.4;padding:2px 5px;border-radius:4px;line-height:1;font-family:monospace}
@@ -292,7 +293,10 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
   .mg,.mg2,.charts-grid,.overview-cols{grid-template-columns:1fr}
   .charts-grid .full{grid-column:span 1}
   .brand-title{font-size:2rem}.form-row{grid-template-columns:1fr}
-  .search-inp{width:130px}
+  .header-top .month-nav{order:10;flex:0 0 100%}
+  .search-inp{width:100%;max-width:100%}
+  .search-wrap{width:100%}
+  #userInfo{display:none}
 }
 
 /* Health tooltip */
@@ -325,23 +329,25 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
 <div class="app" style="display:none">
 
 <header>
-  <div>
-    <div class="brand-title">Budget <em>Boss</em></div>
-    <div class="brand-sub">Financial Dashboard</div>
-  </div>
-  <div class="header-right">
-    <span id="userInfo" style="font-size:.72rem;color:var(--muted);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
-    <button id="btnLogout" class="add-btn sec" style="display:none">Odhlásit</button>
-    <div class="search-wrap">
-      <span class="search-icon">🔍</span>
-      <input class="search-inp" id="searchInp" type="text" placeholder="Hledat… (Ctrl+K)" oninput="onSearch(this.value)" onblur="setTimeout(closeSearch,180)" autocomplete="off">
-      <div class="search-results" id="searchResults"></div>
+  <div class="header-top">
+    <div>
+      <div class="brand-title">Budget <em>Boss</em></div>
+      <div class="brand-sub">Financial Dashboard</div>
     </div>
     <div class="month-nav">
       <button onclick="changeMonth(-1)">&#8249;</button>
       <span class="month-label" id="monthLabel"></span>
       <button onclick="changeMonth(1)">&#8250;</button>
     </div>
+    <div class="header-user">
+      <span id="userInfo" style="font-size:.72rem;color:var(--muted);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+      <button id="btnLogout" class="add-btn sec" style="display:none">Odhlásit</button>
+    </div>
+  </div>
+  <div class="search-wrap">
+    <span class="search-icon">🔍</span>
+    <input class="search-inp" id="searchInp" type="text" placeholder="Hledat… (Ctrl+K)" oninput="onSearch(this.value)" onblur="setTimeout(closeSearch,180)" autocomplete="off">
+    <div class="search-results" id="searchResults"></div>
   </div>
 </header>
 
@@ -414,21 +420,6 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
     </div>
     <div class="ov-right">
       <div class="panel">
-        <div class="ptitle">Míra spoření</div>
-        <div class="savings-rate">
-          <div class="sr-ring">
-            <svg width="58" height="58" viewBox="0 0 58 58">
-              <circle cx="29" cy="29" r="23" fill="none" stroke="#f0e4da" stroke-width="6"/>
-              <circle cx="29" cy="29" r="23" fill="none" stroke="var(--mauve)" stroke-width="6" stroke-linecap="round" stroke-dasharray="144.5" id="srCircle" stroke-dashoffset="144.5"/>
-            </svg>
-            <div class="sr-center" id="srNum">0%</div>
-          </div>
-          <div class="sr-text">z příjmů na<br><strong>investice &amp; úspory</strong><br><span id="srGoalText" style="font-size:.67rem;color:var(--muted)">Cíl: min. 20 %</span><br><span id="srTarget" style="font-size:.72rem;font-weight:600;color:var(--mauve)"></span></div>
-        </div>
-        <div class="ptitle" style="font-size:.88rem;margin-bottom:9px">Trend spoření (5M)</div>
-        <div id="savingsTrend" class="bar-chart"></div>
-      </div>
-      <div class="panel">
         <div class="ptitle">Moje cíle <button class="add-btn sec" onclick="openGoalModal()">+ Cíl</button></div>
         <div id="goalsMini"><div class="empty"><strong>🎯</strong>Žádné cíle.<br>Klikni a přidej svůj první!</div></div>
       </div>
@@ -444,6 +435,22 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
           </div>
           <div class="legend-grid" id="donutLegend2" style="width:100%"></div>
         </div>
+      </div>
+      <div class="panel">
+        <div class="ptitle">Míra spoření</div>
+        <div id="savingsInsight" style="margin-bottom:10px"></div>
+        <div class="savings-rate">
+          <div class="sr-ring">
+            <svg width="58" height="58" viewBox="0 0 58 58">
+              <circle cx="29" cy="29" r="23" fill="none" stroke="#f0e4da" stroke-width="6"/>
+              <circle cx="29" cy="29" r="23" fill="none" stroke="var(--mauve)" stroke-width="6" stroke-linecap="round" stroke-dasharray="144.5" id="srCircle" stroke-dashoffset="144.5"/>
+            </svg>
+            <div class="sr-center" id="srNum">0%</div>
+          </div>
+          <div class="sr-text">z příjmů na<br><strong>investice &amp; úspory</strong><br><span id="srGoalText" style="font-size:.67rem;color:var(--muted)">Cíl: min. 20 %</span><br><span id="srTarget" style="font-size:.72rem;font-weight:600;color:var(--mauve)"></span></div>
+        </div>
+        <div class="ptitle" style="font-size:.88rem;margin-bottom:9px">Trend spoření (5M)</div>
+        <div id="savingsTrend" class="bar-chart"></div>
       </div>
     </div>
   </div>
@@ -1076,7 +1083,7 @@ function render(){
     }
   }
 
-  if(activeTab==='overview'){ renderTxList(); renderGoalsMini(); renderInsights(t,income,expense,invest,rate); renderSavingsTrend(); renderDonut('donutSvg2','donutLegend2',expense,t.filter(x=>x.type==='expense')); }
+  if(activeTab==='overview'){ renderTxList(); renderGoalsMini(); renderInsights(t,income,expense,invest,rate); renderSavingsInsight(rate,income); renderSavingsTrend(); renderDonut('donutSvg2','donutLegend2',expense,t.filter(x=>x.type==='expense')); }
   if(activeTab==='budget')   renderBudget(t);
   if(activeTab==='goals')    { renderGoalsList(t); renderInvest(t); }
 }
@@ -1101,12 +1108,20 @@ function renderTxList(){
   }).join('');
 }
 
+function renderSavingsInsight(rate,income){
+  const el=document.getElementById('savingsInsight');
+  if(!el)return;
+  if(income===0){el.innerHTML='';return;}
+  const h=rate>=20
+    ?{type:'good',icon:'🎉',msg:'Spoříš '+rate+' % příjmů — nad hranicí 20 %.'}
+    :{type:'warn',icon:'💰',msg:'Spoříš '+rate+' % — doporučená hranice je 20 %.'};
+  el.innerHTML='<div class="insight '+h.type+'" style="margin-bottom:0;font-size:.75rem"><span class="insight-icon">'+h.icon+'</span>'+h.msg+'</div>';
+}
+
 function renderInsights(t,income,expense,invest,rate){
   const el=document.getElementById('insightArea');
   const hints=[];
   if(income===0) hints.push({type:'info',icon:'💡',msg:'Přidej příjmy za '+MONTHS[cM]+', aby dashboard fungoval naplno.'});
-  if(rate<20&&income>0) hints.push({type:'warn',icon:'💰',msg:'Spoříš '+rate+'% — doporučená hranice je 20 % příjmů.'});
-  if(rate>=20&&income>0) hints.push({type:'good',icon:'🎉',msg:'Skvělé! Spoříš '+rate+'% příjmů — nad doporučenou hranicí.'});
   const expA={};
   t.filter(x=>x.type==='expense').forEach(x=>{expA[x.cat]=(expA[x.cat]||0)+x.amount;});
   const limI=curLimits();
