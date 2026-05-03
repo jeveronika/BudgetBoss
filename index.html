@@ -460,16 +460,8 @@ header{display:flex;flex-direction:column;margin-bottom:20px}
       <p style="font-size:.72rem;color:var(--muted);margin-bottom:13px;line-height:1.6">Nastav plánované příjmy a limity výdajů pro každou kategorii — včetně vlastních.</p>
       <div id="budgetList"><div class="empty"><strong>🗓</strong>Nastav plán tlačítkem výše.</div></div>
     </div>
-    <div class="panel">
-      <div class="ptitle">Výdaje — plán vs. skutečnost</div>
-      <div style="display:flex;gap:11px;font-size:.67rem;color:var(--muted);margin-bottom:11px">
-        <span style="display:flex;align-items:center;gap:4px"><span style="width:8px;height:8px;border-radius:2px;background:var(--border2);display:inline-block"></span>Plán</span>
-        <span style="display:flex;align-items:center;gap:4px"><span style="width:8px;height:8px;border-radius:2px;background:var(--rose-mid);display:inline-block"></span>Skutečnost</span>
-      </div>
-      <div id="budgetChart"><div class="empty">Nastav limity výdajů</div></div>
-    </div>
+    <div class="panel" id="panel5030"></div>
   </div>
-  <div class="panel" id="panel5030" style="margin-bottom:16px"></div>
 </div>
 
 <!-- GOALS -->
@@ -728,14 +720,18 @@ for(let i=1;i<=5;i++){
 save();
 
 function save(){ localStorage.setItem('bb8',JSON.stringify(S)); if(window.saveToCloud) window.saveToCloud(); }
-// Get plan for a specific month key — falls back to most recent past plan
+// Compare two month keys "YYYY-M" numerically (strings sort incorrectly for month 10/11)
+function keyLt(a,b){ const[ay,am]=a.split('-').map(Number),[by,bm]=b.split('-').map(Number); return ay!==by?ay<by:am<bm; }
+function planHasData(p){ return p&&(Object.keys(p.limits||{}).length||Object.keys(p.income||{}).length); }
+// Get plan for a specific month key — falls back to most recent past plan with actual data
 function getPlan(key){
   if(!S.plans) S.plans={};
-  if(S.plans[key]) return S.plans[key];
-  // Find most recent past plan
-  const keys=Object.keys(S.plans).sort();
-  const past=keys.filter(k=>k<=key);
-  if(past.length) return JSON.parse(JSON.stringify(S.plans[past[past.length-1]]));
+  if(planHasData(S.plans[key])) return S.plans[key];
+  // Find most recent past plan using numeric comparison
+  const best=Object.keys(S.plans)
+    .filter(k=>keyLt(k,key)&&planHasData(S.plans[k]))
+    .sort((a,b)=>keyLt(a,b)?-1:1);
+  if(best.length) return JSON.parse(JSON.stringify(S.plans[best[best.length-1]]));
   return {limits:{},income:{}};
 }
 function curPlan(){ return getPlan(ck()); }
@@ -785,7 +781,15 @@ document.querySelectorAll('.overlay').forEach(el=>{
   el.addEventListener('click',e=>{if(e.target===el)el.classList.remove('open');});
 });
 
-function changeMonth(d){ cM+=d; if(cM>11){cM=0;cY++;}if(cM<0){cM=11;cY--;} render(); }
+function changeMonth(d){
+  cM+=d; if(cM>11){cM=0;cY++;}if(cM<0){cM=11;cY--;}
+  // Auto-copy plan from the most recent past month so the new month always has a saved plan
+  if(!planHasData(S.plans[ck()])){
+    const inherited=getPlan(ck());
+    if(planHasData(inherited)){S.plans[ck()]=JSON.parse(JSON.stringify(inherited));save();}
+  }
+  render();
+}
 function switchTab(t){
   activeTab=t;
   ['overview','budget','goals'].forEach(id=>{
@@ -1230,7 +1234,7 @@ function renderBudget(t){
   const lim=curLimits(), inc=curIncome();
   const allInc=[...new Set([...Object.keys(inc),...Object.keys(incA)])];
   const allExp=[...new Set([...Object.keys(lim),...Object.keys(expA)])];
-  const le=document.getElementById('budgetList'),ce=document.getElementById('budgetChart');
+  const le=document.getElementById('budgetList');
   const sw=document.getElementById('budgetSummary');
 
   /* ── summary / warnings ── */
@@ -1249,7 +1253,6 @@ function renderBudget(t){
 
   if(!allInc.length&&!allExp.length){
     le.innerHTML='<div class="empty"><strong>🗓</strong>Nastav plán tlačítkem výše.</div>';
-    ce.innerHTML='<div class="empty">—</div>';
     render5030(inc,lim,incA,expA,invA); return;
   }
 
@@ -1266,25 +1269,6 @@ function renderBudget(t){
   if(allInc.length) h+='<div class="psec sage">🌿 Příjmy</div>'+allInc.map(c=>pr(c,incA[c],inc[c],true)).join('');
   if(allExp.length) h+='<div class="psec rose" style="margin-top:13px">🌸 Výdaje</div>'+allExp.map(c=>pr(c,expA[c],lim[c],false)).join('');
   le.innerHTML=h;
-
-  /* ── CSS bar chart ── */
-  const items=allExp.filter(c=>lim[c]).map(c=>({cat:c,act:expA[c]||0,plan:lim[c]}));
-  if(!items.length){ce.innerHTML='<div class="empty">Nastav limity výdajů</div>';render5030(inc,lim,incA,expA,invA);return;}
-  const maxV=Math.max(...items.map(c=>Math.max(c.act,c.plan)),1);
-  const BAR=170;
-  ce.innerHTML='<div class="bvc">'+items.map(c=>{
-    const pw=Math.max(4,Math.round((c.plan/maxV)*BAR));
-    const aw=Math.round((c.act/maxV)*BAR);
-    const over=c.act>c.plan;
-    const lbl=icon(c.cat)+'&thinsp;'+(cname(c.cat).length>10?cname(c.cat).slice(0,10)+'…':cname(c.cat));
-    return '<div class="bvc-row">'+
-      '<div class="bvc-label">'+lbl+'</div>'+
-      '<div class="bvc-bars">'+
-        '<div class="bvc-track"><div class="bvc-fill plan-bar" style="width:'+pw+'px"></div><span class="bvc-num">'+fmtK(c.plan)+'</span></div>'+
-        '<div class="bvc-track">'+(aw>0?'<div class="bvc-fill act-bar'+(over?' act-over':'')+'" style="width:'+aw+'px"></div><span class="bvc-num">'+fmtK(c.act)+'</span>':'<span class="bvc-num" style="color:var(--border2)">—</span>')+'</div>'+
-      '</div>'+
-    '</div>';
-  }).join('')+'</div>';
 
   render5030(inc,lim,incA,expA,invA);
 }
