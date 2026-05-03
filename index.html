@@ -255,6 +255,22 @@ header{display:flex;flex-direction:column;margin-bottom:20px}
 .plan-sep{border-radius:9px;padding:7px 11px;margin:12px 0 5px;font-family:'Cormorant Garamond',serif;font-size:.9rem;font-weight:600}
 .plan-sep.sage{background:var(--sage-light);color:var(--sage)}.plan-sep.rose{background:var(--rose-light);color:var(--rose)}
 
+/* Budget plan-vs-actual CSS bar chart */
+.bvc{display:flex;flex-direction:column}
+.bvc-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)}
+.bvc-row:last-child{border-bottom:none}
+.bvc-label{width:90px;font-size:.73rem;color:var(--text2);flex-shrink:0;display:flex;align-items:center;gap:4px;justify-content:flex-end;text-align:right;line-height:1.2}
+.bvc-bars{flex:1;display:flex;flex-direction:column;gap:4px}
+.bvc-track{display:flex;align-items:center;gap:6px}
+.bvc-fill{height:10px;border-radius:5px;min-width:3px;flex-shrink:0;transition:width .6s cubic-bezier(.4,0,.2,1)}
+.bvc-fill.plan-bar{background:var(--border2)}.bvc-fill.act-bar{background:var(--rose-mid)}.bvc-fill.act-over{background:var(--rose)}
+.bvc-num{font-size:.67rem;color:var(--muted);white-space:nowrap}
+/* 50/30/20 panel */
+.rule-buckets{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:12px}
+.rule-bucket{background:var(--bg2);border-radius:13px;padding:13px 10px;text-align:center;border:1px solid var(--border)}
+.rb-pct{font-family:'Cormorant Garamond',serif;font-size:1.45rem;font-weight:600;line-height:1}
+.rb-name{font-size:.61rem;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);margin-top:3px}
+.rb-target{font-size:.79rem;font-weight:600;margin-top:8px}
 /* Toasts */
 .toast-wrap{position:fixed;bottom:90px;right:22px;display:flex;flex-direction:column;gap:7px;z-index:300;pointer-events:none}
 .toast{background:var(--text);color:#fff;border-radius:12px;padding:9px 15px;font-size:.78rem;font-family:'Jost',sans-serif;box-shadow:0 4px 18px rgba(0,0,0,.18);animation:tIn .28s ease;max-width:260px}
@@ -437,6 +453,7 @@ header{display:flex;flex-direction:column;margin-bottom:20px}
 
 <!-- BUDGET -->
 <div id="tab-budget" style="display:none">
+  <div id="budgetSummary" style="margin-bottom:12px"></div>
   <div class="mg">
     <div class="panel">
       <div class="ptitle">Plán kategorií <button class="add-btn" onclick="openPlanModal()">✦ Nastavit</button></div>
@@ -447,11 +464,12 @@ header{display:flex;flex-direction:column;margin-bottom:20px}
       <div class="ptitle">Výdaje — plán vs. skutečnost</div>
       <div style="display:flex;gap:11px;font-size:.67rem;color:var(--muted);margin-bottom:11px">
         <span style="display:flex;align-items:center;gap:4px"><span style="width:8px;height:8px;border-radius:2px;background:var(--border2);display:inline-block"></span>Plán</span>
-        <span style="display:flex;align-items:center;gap:4px"><span style="width:8px;height:8px;border-radius:2px;background:var(--rose);display:inline-block"></span>Skutečnost</span>
+        <span style="display:flex;align-items:center;gap:4px"><span style="width:8px;height:8px;border-radius:2px;background:var(--rose-mid);display:inline-block"></span>Skutečnost</span>
       </div>
-      <div id="budgetChart" style="overflow-x:auto"><div class="empty">Nastav limity výdajů</div></div>
+      <div id="budgetChart"><div class="empty">Nastav limity výdajů</div></div>
     </div>
   </div>
+  <div class="panel" id="panel5030" style="margin-bottom:16px"></div>
 </div>
 
 <!-- GOALS -->
@@ -1208,45 +1226,112 @@ function renderBudget(t){
   const expA={},incA={};
   t.filter(x=>x.type==='expense').forEach(x=>{expA[x.cat]=(expA[x.cat]||0)+x.amount;});
   t.filter(x=>x.type==='income').forEach(x=>{incA[x.cat]=(incA[x.cat]||0)+x.amount;});
+  const invA=t.filter(x=>x.type==='investment').reduce((s,x)=>s+x.amount,0);
   const lim=curLimits(), inc=curIncome();
   const allInc=[...new Set([...Object.keys(inc),...Object.keys(incA)])];
   const allExp=[...new Set([...Object.keys(lim),...Object.keys(expA)])];
   const le=document.getElementById('budgetList'),ce=document.getElementById('budgetChart');
-  if(!allInc.length&&!allExp.length){le.innerHTML='<div class="empty"><strong>🗓</strong>Nastav plán tlačítkem výše.</div>';ce.innerHTML='<div class="empty">—</div>';return;}
+  const sw=document.getElementById('budgetSummary');
+
+  /* ── summary / warnings ── */
+  const totalIncPlan=Object.values(inc).reduce((s,v)=>s+v,0);
+  const totalExpPlan=Object.values(lim).reduce((s,v)=>s+v,0);
+  const isInherited=!S.plans[ck()];
+  let swHtml='';
+  if(isInherited&&(totalIncPlan||totalExpPlan)){
+    swHtml+='<div style="font-size:.72rem;color:#9a7a3a;background:var(--gold-light);border:1px solid #e8d090;border-radius:10px;padding:9px 14px;margin-bottom:10px;display:flex;align-items:center;gap:9px">📋 <span>Plán přenesen z předchozího měsíce. Klikni <strong>✦ Nastavit</strong> a ulož pro uložení konkrétního plánu tohoto měsíce.</span></div>';
+  }
+  if(totalIncPlan>0&&totalExpPlan>totalIncPlan){
+    const over=totalExpPlan-totalIncPlan;
+    swHtml+='<div style="font-size:.77rem;color:#b06020;background:#fff3e0;border:1px solid #f0c060;border-radius:10px;padding:10px 14px;margin-bottom:10px;display:flex;align-items:center;gap:9px"><span style="font-size:1.15rem;flex-shrink:0">⚠️</span><span>Plánuješ o <strong>'+fmt(over)+'</strong> více výdajů než příjmů! Doporuč snížit limity nebo navýšit příjmový plán.</span></div>';
+  }
+  if(sw) sw.innerHTML=swHtml;
+
+  if(!allInc.length&&!allExp.length){
+    le.innerHTML='<div class="empty"><strong>🗓</strong>Nastav plán tlačítkem výše.</div>';
+    ce.innerHTML='<div class="empty">—</div>';
+    render5030(inc,lim,incA,expA,invA); return;
+  }
+
+  /* ── category progress list ── */
   function pr(cat,actual,plan,isInc){
-    const act=actual||0,lim=plan||0,pct=lim>0?Math.min(120,Math.round((act/lim)*100)):0;
-    const bc=isInc?(pct>=100?'var(--sage)':'var(--sage)'):(pct>100?'var(--rose)':pct>80?'var(--gold)':'var(--sage)');
-    const rem=lim-act;let rc='ok',rt='';
-    if(lim>0){if(isInc){if(act>=lim){rc='ok';rt='✓ Plán splněn';}else if(pct>=80){rc='warn';rt='Zbývá '+fmt(Math.abs(rem))+' do plánu';}else{rc='ok';rt=pct+'% splněno';}}else{if(rem<0){rc='over';rt='Přečerpáno o '+fmt(Math.abs(rem));}else if(pct>=80){rc='warn';rt='Zbývá jen '+fmt(rem);}else{rc='ok';rt='Zbývá '+fmt(rem);}}}
-    return '<div class="budget-row"><div class="budget-top"><span class="bcat-icon">'+icon(cat)+'</span><span class="bcat-name">'+cname(cat)+'</span><span class="bcat-actual '+(isInc?'pos':'neg')+'">'+fmt(act)+'</span>'+(lim?'<span style="font-size:.7rem;color:var(--muted)">/ '+fmt(lim)+'</span>':'')+
-    '</div>'+(lim?'<div class="bprog-wrap"><div class="bprog-bar"><div class="bprog-fill" style="width:'+Math.min(100,pct)+'%;background:'+bc+'"></div></div><span class="bprog-pct">'+pct+'%</span></div><div class="b-remain '+rc+'">'+rt+'</div>':'<div style="font-size:.67rem;color:var(--muted);margin-top:2px">Bez plánu</div>')+'</div>';
+    const act=actual||0,lmt=plan||0,pct=lmt>0?Math.min(120,Math.round((act/lmt)*100)):0;
+    const bc=isInc?'var(--sage)':(pct>100?'var(--rose)':pct>80?'var(--gold)':'var(--sage)');
+    const rem=lmt-act;let rc='ok',rt='';
+    if(lmt>0){if(isInc){if(act>=lmt){rc='ok';rt='✓ Plán splněn';}else if(pct>=80){rc='warn';rt='Zbývá '+fmt(Math.abs(rem))+' do plánu';}else{rc='ok';rt=pct+'% splněno';}}else{if(rem<0){rc='over';rt='Přečerpáno o '+fmt(Math.abs(rem));}else if(pct>=80){rc='warn';rt='Zbývá jen '+fmt(rem);}else{rc='ok';rt='Zbývá '+fmt(rem);}}}
+    return '<div class="budget-row"><div class="budget-top"><span class="bcat-icon">'+icon(cat)+'</span><span class="bcat-name">'+cname(cat)+'</span><span class="bcat-actual '+(isInc?'pos':'neg')+'">'+fmt(act)+'</span>'+(lmt?'<span style="font-size:.7rem;color:var(--muted)">/ '+fmt(lmt)+'</span>':'')+
+    '</div>'+(lmt?'<div class="bprog-wrap"><div class="bprog-bar"><div class="bprog-fill" style="width:'+Math.min(100,pct)+'%;background:'+bc+'"></div></div><span class="bprog-pct">'+pct+'%</span></div><div class="b-remain '+rc+'">'+rt+'</div>':'<div style="font-size:.67rem;color:var(--muted);margin-top:2px">Bez plánu</div>')+'</div>';
   }
   let h='';
   if(allInc.length) h+='<div class="psec sage">🌿 Příjmy</div>'+allInc.map(c=>pr(c,incA[c],inc[c],true)).join('');
   if(allExp.length) h+='<div class="psec rose" style="margin-top:13px">🌸 Výdaje</div>'+allExp.map(c=>pr(c,expA[c],lim[c],false)).join('');
   le.innerHTML=h;
+
+  /* ── CSS bar chart ── */
   const items=allExp.filter(c=>lim[c]).map(c=>({cat:c,act:expA[c]||0,plan:lim[c]}));
-  if(!items.length){ce.innerHTML='<div class="empty">Nastav limity výdajů</div>';return;}
-  const bH=12,bG=4,rH=bH*2+bG+15,pL=106,pR=68,pT=5,W=390,iW=W-pL-pR,totH=pT+items.length*rH;
-  const maxV=Math.max(...items.map(c=>Math.max(c.act,c.plan)),1),sX=v=>Math.max(0,Math.min(iW,(v/maxV)*iW));
-  const rows=items.map((c,i)=>{
-    const y=pT+i*rH,pw=sX(c.plan),aw=sX(c.act),over=c.act>c.plan;
-    const lb=icon(c.cat)+' '+(cname(c.cat).length>11?cname(c.cat).slice(0,11)+'…':cname(c.cat));
-    const pb='<rect x="'+pL+'" y="'+(y+1)+'" width="'+pw+'" height="'+bH+'" rx="3" fill="#e8d5c8" data-tip="Plán: '+fmt(c.plan)+'"><title>Plán: '+fmt(c.plan)+'</title></rect>'+(pw>0?'<text x="'+(pL+pw+4)+'" y="'+(y+bH/2+4)+'" font-family="Jost,sans-serif" font-size="9" fill="#b08c84">'+fmtK(c.plan)+'</text>':'');
-    const ab='<rect x="'+pL+'" y="'+(y+bH+bG+1)+'" width="'+aw+'" height="'+bH+'" rx="3" fill="'+(over?'#d4807a':'#e8b4b0')+'" data-tip="Skutečnost: '+fmt(c.act)+'"><title>Skutečnost: '+fmt(c.act)+'</title></rect>'+(aw>0?'<text x="'+(pL+aw+4)+'" y="'+(y+bH+bG+bH/2+4)+'" font-family="Jost,sans-serif" font-size="9" fill="'+(over?'#d4807a':'#b08c84')+'">'+fmtK(c.act)+'</text>':'');
-    const rl='<text x="'+(pL-7)+'" y="'+(y+bH+bG/2+4)+'" text-anchor="end" font-family="Jost,sans-serif" font-size="9.5" fill="#6b4e47">'+lb+'</text>';
-    const sep=i<items.length-1?'<line x1="0" y1="'+(y+rH-1)+'" x2="'+W+'" y2="'+(y+rH-1)+'" stroke="#f0e4da" stroke-width="1"/>':'';
-    return rl+pb+ab+sep;
-  }).join('');
-  ce.innerHTML='<svg width="100%" viewBox="0 0 '+W+' '+totH+'" style="display:block">'+rows+'</svg>';
-  const svg=ce.querySelector('svg');if(!svg)return;
-  let tip=ce.querySelector('.chart-tip');
-  if(!tip){tip=document.createElement('div');tip.className='chart-tip';tip.style.cssText='position:absolute;background:#2d1f1a;color:#fff;border-radius:8px;padding:4px 10px;font-size:.72rem;font-family:Jost,sans-serif;pointer-events:none;opacity:0;transition:opacity .15s;white-space:nowrap;z-index:50';ce.style.position='relative';ce.appendChild(tip);}
-  svg.querySelectorAll('rect[data-tip]').forEach(r=>{
-    r.addEventListener('mouseenter',()=>{tip.textContent=r.getAttribute('data-tip');tip.style.opacity='1';});
-    r.addEventListener('mousemove',e=>{const b=ce.getBoundingClientRect();tip.style.left=(e.clientX-b.left+10)+'px';tip.style.top=(e.clientY-b.top-28)+'px';});
-    r.addEventListener('mouseleave',()=>tip.style.opacity='0');
-  });
+  if(!items.length){ce.innerHTML='<div class="empty">Nastav limity výdajů</div>';render5030(inc,lim,incA,expA,invA);return;}
+  const maxV=Math.max(...items.map(c=>Math.max(c.act,c.plan)),1);
+  const BAR=170;
+  ce.innerHTML='<div class="bvc">'+items.map(c=>{
+    const pw=Math.max(4,Math.round((c.plan/maxV)*BAR));
+    const aw=Math.round((c.act/maxV)*BAR);
+    const over=c.act>c.plan;
+    const lbl=icon(c.cat)+'&thinsp;'+(cname(c.cat).length>10?cname(c.cat).slice(0,10)+'…':cname(c.cat));
+    return '<div class="bvc-row">'+
+      '<div class="bvc-label">'+lbl+'</div>'+
+      '<div class="bvc-bars">'+
+        '<div class="bvc-track"><div class="bvc-fill plan-bar" style="width:'+pw+'px"></div><span class="bvc-num">'+fmtK(c.plan)+'</span></div>'+
+        '<div class="bvc-track">'+(aw>0?'<div class="bvc-fill act-bar'+(over?' act-over':'')+'" style="width:'+aw+'px"></div><span class="bvc-num">'+fmtK(c.act)+'</span>':'<span class="bvc-num" style="color:var(--border2)">—</span>')+'</div>'+
+      '</div>'+
+    '</div>';
+  }).join('')+'</div>';
+
+  render5030(inc,lim,incA,expA,invA);
+}
+
+function render5030(inc,lim,incA,expA,invA){
+  const el=document.getElementById('panel5030');
+  if(!el) return;
+  const totalIncPlan=Object.values(inc).reduce((s,v)=>s+v,0);
+  const totalIncAct=Object.values(incA).reduce((s,v)=>s+v,0);
+  const base=totalIncAct||totalIncPlan;
+  if(!base){
+    el.innerHTML='<div class="ptitle">Pravidlo 50/30/20</div><div class="empty" style="margin:0">Nastav příjem v plánu nebo přidej příjmovou transakci.</div>';
+    return;
+  }
+  const n50=Math.round(base*.5),w30=Math.round(base*.3),s20=Math.round(base*.2);
+  const totalExp=Object.values(expA).reduce((s,v)=>s+v,0);
+  const inv=invA||0;
+  const free=Math.max(0,base-totalExp-inv);
+  const expPct=Math.min(100,Math.round(totalExp/base*100));
+  const invPct=Math.min(100,Math.round(inv/base*100));
+  const freePct=Math.max(0,100-expPct-invPct);
+  function bucket(pct,emoji,name,col,target){
+    return '<div class="rule-bucket"><div class="rb-pct" style="color:'+col+'">'+pct+'%</div>'+
+      '<div class="rb-name">'+emoji+' '+name+'</div>'+
+      '<div class="rb-target" style="color:'+col+'">max '+fmt(target)+'</div></div>';
+  }
+  el.innerHTML=
+    '<div class="ptitle">Pravidlo 50/30/20 <span style="font-size:.68rem;font-family:Jost,sans-serif;font-weight:400;color:var(--muted)">— doporučené rozdělení příjmu</span></div>'+
+    '<p style="font-size:.71rem;color:var(--muted);line-height:1.55;margin-bottom:4px">Základ: <strong>'+fmt(base)+'</strong>'+(totalIncAct?' (skutečný příjem)':' (plánovaný příjem)')+'</p>'+
+    '<div class="rule-buckets">'+
+      bucket('50','🏠','Potřeby','var(--sage)',n50)+
+      bucket('30','🎉','Přání','var(--mauve)',w30)+
+      bucket('20','💎','Spoření','var(--gold)',s20)+
+    '</div>'+
+    '<div style="margin-top:14px">'+
+      '<div style="display:flex;justify-content:space-between;font-size:.7rem;color:var(--muted);margin-bottom:5px">'+
+        '<span>🌸 Výdaje '+fmt(totalExp)+' ('+expPct+'%)</span>'+
+        '<span>💎 Investice '+fmt(inv)+' ('+invPct+'%)</span>'+
+        '<span>✦ Volné '+fmt(free)+' ('+freePct+'%)</span>'+
+      '</div>'+
+      '<div style="height:9px;background:var(--border);border-radius:9px;overflow:hidden;display:flex">'+
+        '<div style="width:'+expPct+'%;background:var(--rose-mid);transition:width .8s"></div>'+
+        '<div style="width:'+invPct+'%;background:var(--gold);transition:width .8s"></div>'+
+        '<div style="width:'+freePct+'%;background:var(--sage-light);transition:width .8s"></div>'+
+      '</div>'+
+      '<p style="font-size:.67rem;color:var(--muted);margin-top:9px;line-height:1.5">Potřeby = nezbytné výdaje (bydlení, jídlo…) · Přání = zábava, koníčky · Spoření = investice a rezervy. Výdaje výše zahrnují vše — rozděl je v plánování sám.</p>'+
+    '</div>';
 }
 
 
