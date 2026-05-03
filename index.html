@@ -237,9 +237,11 @@ header{display:flex;flex-direction:column;margin-bottom:20px}
 .cat-name-inp:focus{border-color:var(--rose-mid)}
 .cat-del-btn{background:none;border:none;color:var(--border2);cursor:pointer;font-size:.92rem;transition:color .2s;padding:0 2px;flex-shrink:0}
 .cat-del-btn:hover{color:var(--rose)}
-.cat-type-btn{font-size:.61rem;padding:3px 8px;border-radius:20px;border:none;cursor:pointer;font-family:'Jost',sans-serif;transition:all .2s;flex-shrink:0;white-space:nowrap;font-weight:500}
-.cat-type-btn.need{background:var(--sage-light);color:var(--sage)}.cat-type-btn.need:hover{background:var(--sage);color:#fff}
-.cat-type-btn.want{background:var(--mauve-light);color:var(--mauve)}.cat-type-btn.want:hover{background:var(--mauve);color:#fff}
+.kind-row{display:flex;gap:8px}
+.kind-btn{flex:1;padding:8px 6px;border-radius:10px;border:1px solid var(--border);background:var(--bg2);cursor:pointer;font-family:'Jost',sans-serif;font-size:.78rem;font-weight:500;transition:all .2s;color:var(--muted)}
+.kind-btn:hover:not(.active){border-color:var(--border2);background:var(--surface)}
+.kind-btn.active.need{background:var(--sage-light);border-color:var(--sage);color:var(--sage)}
+.kind-btn.active.want{background:var(--mauve-light);border-color:var(--mauve);color:var(--mauve)}
 .cat-section-label{font-size:.63rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin:8px 0 3px}
 .new-cat-row{display:flex;gap:5px;align-items:center;margin-top:9px;padding-top:9px;border-top:1px solid var(--border)}
 .cat-save-btn{padding:8px 12px;background:var(--rose-light);border:1px solid var(--rose-mid);border-radius:10px;color:var(--rose);cursor:pointer;font-size:.8rem;transition:all .2s;font-family:'Jost',sans-serif;white-space:nowrap}
@@ -513,6 +515,13 @@ header{display:flex;flex-direction:column;margin-bottom:20px}
     </div>
     <div class="fg" id="catFg"><label>Kategorie</label><select id="txCat"></select></div>
     <div class="fg" id="goalPickRow" style="display:none"><label>Vyber cíl</label><select id="txGoalPick"></select></div>
+    <div class="fg" id="kindFg" style="display:none">
+      <label>Typ výdaje</label>
+      <div class="kind-row">
+        <button class="kind-btn need active" id="kind-need" onclick="setKind('need')">🏠 Nezbytný</button>
+        <button class="kind-btn want" id="kind-want" onclick="setKind('want')">🎉 Radost</button>
+      </div>
+    </div>
     <div class="fg" style="margin-bottom:0">
       <button class="add-btn sec" style="width:100%;justify-content:center" onclick="openCatManager()">⚙ Spravovat kategorie</button>
     </div>
@@ -593,6 +602,13 @@ header{display:flex;flex-direction:column;margin-bottom:20px}
       <div class="fg"><label>Datum</label><input id="editTxDate" type="date"></div>
     </div>
     <div class="fg"><label>Kategorie</label><select id="editTxCat"></select></div>
+    <div class="fg" id="editKindFg" style="display:none">
+      <label>Typ výdaje</label>
+      <div class="kind-row">
+        <button class="kind-btn need active" id="ekind-need" onclick="setEditKind('need')">🏠 Nezbytný</button>
+        <button class="kind-btn want" id="ekind-want" onclick="setEditKind('want')">🎉 Radost</button>
+      </div>
+    </div>
     <div class="mactions">
       <button class="mbtn-cancel" onclick="close2('overlayEditTx')">Zrušit</button>
       <button class="mbtn-ok" onclick="saveEditTx()">Uložit</button>
@@ -831,6 +847,15 @@ function setFilter(f,el){
 }
 
 
+let currentKind='need', editKind='need';
+function setKind(k){
+  currentKind=k;
+  ['need','want'].forEach(t=>{const el=document.getElementById('kind-'+t);if(el){el.classList.toggle('active',t===k);}});
+}
+function setEditKind(k){
+  editKind=k;
+  ['need','want'].forEach(t=>{const el=document.getElementById('ekind-'+t);if(el){el.classList.toggle('active',t===k);}});
+}
 function populateCat(){ document.getElementById('txCat').innerHTML=allCats(txType).map(c=>'<option>'+c+'</option>').join(''); }
 function setTxType(t){
   txType=t;
@@ -838,6 +863,7 @@ function setTxType(t){
   const isGoal=t==='goal';
   document.getElementById('goalPickRow').style.display=isGoal?'':'none';
   document.getElementById('catFg').style.display=isGoal?'none':'';
+  document.getElementById('kindFg').style.display=t==='expense'?'':'none';
   if(isGoal){
     const pick=document.getElementById('txGoalPick');
     pick.innerHTML=S.goals.length?S.goals.map(g=>'<option value="'+g.id+'">'+g.emoji+' '+g.name+'</option>').join(''):'<option value="">Nejprve přidej cíl</option>';
@@ -849,6 +875,7 @@ function openTxModal(){
   document.getElementById('txAmount').value='';
   document.getElementById('goalPickRow').style.display='none';
   document.getElementById('catFg').style.display='';
+  setKind('need');
   setTxType('expense');
   document.getElementById('overlayTx').classList.add('open');
   setTimeout(()=>document.getElementById('txName').focus(),80);
@@ -868,7 +895,9 @@ function addTransaction(){
     toast(fmt(amount)+' → '+g.emoji+' '+g.name,'success');
   } else {
     const cat=document.getElementById('txCat').value;
-    S.data[k].push({id:Date.now(),type:txType,name,amount,cat,date});
+    const tx={id:Date.now(),type:txType,name,amount,cat,date};
+    if(txType==='expense') tx.kind=currentKind;
+    S.data[k].push(tx);
     toast(name+' — '+fmt(amount)+(txType==='income'?' ✓':''),'success');
   }
   save(); close2('overlayTx'); render();
@@ -977,21 +1006,15 @@ function switchCmTab(type){
 function renderCatManager(){
   if(!['expense','income','investment'].includes(cmTabType)) cmTabType='expense';
   const def=DEF[cmTabType]||[],cust=S.cc[cmTabType]||[];
-  const showType=cmTabType==='expense';
-  function typeBtn(cat){
-    const tp=catType(cat);
-    return '<button class="cat-type-btn '+tp+'" data-cat="'+cat+'" onclick="toggleCatMeta(this.dataset.cat)">'+(tp==='need'?'🏠 Nezbytný':'🎉 Radost')+'</button>';
-  }
   let h='';
   if(def.length){
     h+='<div class="cat-section-label">Výchozí kategorie</div>';
-    h+=def.map(cat=>'<div class="cat-row-item"><span style="font-size:.95rem;width:26px;text-align:center">'+icon(cat)+'</span><span style="flex:1;font-size:.8rem;color:var(--muted)">'+cname(cat)+'</span>'+(showType?typeBtn(cat):'<span style="font-size:.62rem;color:var(--border2)">výchozí</span>')+'</div>').join('');
+    h+=def.map(cat=>'<div class="cat-row-item"><span style="font-size:.95rem;width:26px;text-align:center">'+icon(cat)+'</span><span style="flex:1;font-size:.8rem;color:var(--muted)">'+cname(cat)+'</span><span style="font-size:.62rem;color:var(--border2)">výchozí</span></div>').join('');
   }
   if(cust.length){
     h+='<div class="cat-section-label">Vlastní kategorie</div>';
-    h+=cust.map((cat,i)=>{
-      const pts=cat.split(' '),em=pts[pts.length-1]||'📦',nm=pts.slice(0,-1).join(' ')||cat;
-      return '<div class="cat-row-item"><input class="cat-emoji-inp" type="text" maxlength="2" value="'+em+'" id="ce-'+i+'" oninput="liveSaveCat('+i+')"><input class="cat-name-inp" type="text" value="'+nm+'" id="cn-'+i+'" oninput="liveSaveCat('+i+')">'+(showType?typeBtn(cat):'')+'<button class="cat-del-btn" onclick="deleteCat('+i+')" title="Smazat">×</button></div>';
+    h+=cust.map((cat,i)=>{const pts=cat.split(' '),em=pts[pts.length-1]||'📦',nm=pts.slice(0,-1).join(' ')||cat;
+      return '<div class="cat-row-item"><input class="cat-emoji-inp" type="text" maxlength="2" value="'+em+'" id="ce-'+i+'" oninput="liveSaveCat('+i+')"><input class="cat-name-inp" type="text" value="'+nm+'" id="cn-'+i+'" oninput="liveSaveCat('+i+')"><button class="cat-del-btn" onclick="deleteCat('+i+')" title="Smazat">×</button></div>';
     }).join('');
   }
   if(!def.length&&!cust.length) h='<div class="empty">Žádné kategorie</div>';
@@ -1027,6 +1050,9 @@ function openEditTx(id){
     ce.innerHTML=allCats(tx.type).map(c=>'<option'+(c===tx.cat?' selected':'')+'>'+c+'</option>').join('');
     ce.setAttribute('data-mode','normal');
   }
+  const ekf=document.getElementById('editKindFg');
+  if(ekf) ekf.style.display=tx.type==='expense'?'':'none';
+  setEditKind(tx.kind||'need');
   document.getElementById('overlayEditTx').classList.add('open');
   setTimeout(()=>ne.focus(),80);
 }
@@ -1043,6 +1069,7 @@ function saveEditTx(){
     const ng=S.goals.find(g=>g.id===nid);
     if(ng){ng.saved=Math.min(ng.target,ng.saved+tx.amount);tx.goalId=nid;tx.cat=ng.name+' '+ng.emoji;}
   } else { tx.cat=ce.value; }
+  if(tx.type==='expense') tx.kind=editKind;
   save(); close2('overlayEditTx'); toast('Upraveno ✓','success'); render();
 }
 
@@ -1274,8 +1301,9 @@ function renderDonut(svgId,legId,total,arr){
 }
 
 function renderBudget(t){
+  const expTxs=t.filter(x=>x.type==='expense');
   const expA={},incA={};
-  t.filter(x=>x.type==='expense').forEach(x=>{expA[x.cat]=(expA[x.cat]||0)+x.amount;});
+  expTxs.forEach(x=>{expA[x.cat]=(expA[x.cat]||0)+x.amount;});
   t.filter(x=>x.type==='income').forEach(x=>{incA[x.cat]=(incA[x.cat]||0)+x.amount;});
   const invA=t.filter(x=>x.type==='investment').reduce((s,x)=>s+x.amount,0);
   const lim=curLimits(), inc=curIncome();
@@ -1300,7 +1328,7 @@ function renderBudget(t){
 
   if(!allInc.length&&!allExp.length){
     le.innerHTML='<div class="empty"><strong>🗓</strong>Nastav plán tlačítkem výše.</div>';
-    render5030(inc,lim,incA,expA,invA); return;
+    render5030(inc,lim,incA,expTxs,invA); return;
   }
 
   /* ── category progress list ── */
@@ -1317,10 +1345,10 @@ function renderBudget(t){
   if(allExp.length) h+='<div class="psec rose" style="margin-top:13px">🌸 Výdaje</div>'+allExp.map(c=>pr(c,expA[c],lim[c],false)).join('');
   le.innerHTML=h;
 
-  render5030(inc,lim,incA,expA,invA);
+  render5030(inc,lim,incA,expTxs,invA);
 }
 
-function render5030(inc,lim,incA,expA,invA){
+function render5030(inc,lim,incA,expTxs,invA){
   const el=document.getElementById('panel5030');
   if(!el) return;
   const totalIncPlan=Object.values(inc).reduce((s,v)=>s+v,0);
@@ -1331,9 +1359,9 @@ function render5030(inc,lim,incA,expA,invA){
     return;
   }
   const n50=Math.round(base*.5),w30=Math.round(base*.3),s20=Math.round(base*.2);
-  // Split expenses by category type (need / want)
+  // Split expenses by tx.kind set at transaction level
   let needsExp=0,wantsExp=0;
-  Object.entries(expA).forEach(([cat,v])=>{ if(catType(cat)==='want') wantsExp+=v; else needsExp+=v; });
+  (expTxs||[]).forEach(tx=>{ if(tx.kind==='want') wantsExp+=tx.amount; else needsExp+=tx.amount; });
   const inv=invA||0;
   function bucket(pct,emoji,name,desc,col,target,actual){
     const p=target>0?Math.min(100,Math.round(actual/target*100)):0;
