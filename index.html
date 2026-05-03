@@ -266,11 +266,19 @@ header{display:flex;flex-direction:column;margin-bottom:20px}
 .bvc-fill.plan-bar{background:var(--border2)}.bvc-fill.act-bar{background:var(--rose-mid)}.bvc-fill.act-over{background:var(--rose)}
 .bvc-num{font-size:.67rem;color:var(--muted);white-space:nowrap}
 /* 50/30/20 panel */
-.rule-buckets{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:12px}
-.rule-bucket{background:var(--bg2);border-radius:13px;padding:13px 10px;text-align:center;border:1px solid var(--border)}
-.rb-pct{font-family:'Cormorant Garamond',serif;font-size:1.45rem;font-weight:600;line-height:1}
-.rb-name{font-size:.61rem;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);margin-top:3px}
-.rb-target{font-size:.79rem;font-weight:600;margin-top:8px}
+.rule-buckets{display:flex;flex-direction:column;gap:10px;margin-top:12px}
+.rule-bucket{background:var(--bg2);border-radius:13px;padding:14px 18px;border:1px solid var(--border);display:flex;align-items:center;gap:18px}
+.rb-left{display:flex;align-items:center;gap:13px;flex-shrink:0;width:185px}
+.rb-pct{font-family:'Cormorant Garamond',serif;font-size:2rem;font-weight:600;line-height:1;flex-shrink:0;width:46px;text-align:right}
+.rb-name{font-size:.83rem;font-weight:500;color:var(--text)}
+.rb-desc{font-size:.66rem;color:var(--muted);margin-top:2px;line-height:1.4}
+.rb-right{flex:1;display:flex;flex-direction:column;gap:5px}
+.rb-amounts{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.rb-target{font-size:.82rem;font-weight:600}
+.rb-actual{font-size:.7rem;color:var(--muted);white-space:nowrap}
+.rb-bw{height:7px;background:var(--border);border-radius:7px;overflow:hidden}
+.rb-bf{height:100%;border-radius:7px;transition:width .9s cubic-bezier(.4,0,.2,1)}
+.rb-used{font-size:.67rem;color:var(--muted)}
 /* Toasts */
 .toast-wrap{position:fixed;bottom:90px;right:22px;display:flex;flex-direction:column;gap:7px;z-index:300;pointer-events:none}
 .toast{background:var(--text);color:#fff;border-radius:12px;padding:9px 15px;font-size:.78rem;font-family:'Jost',sans-serif;box-shadow:0 4px 18px rgba(0,0,0,.18);animation:tIn .28s ease;max-width:260px}
@@ -543,7 +551,10 @@ header{display:flex;flex-direction:column;margin-bottom:20px}
 <div class="overlay" id="overlayPlan">
   <div class="modal-lg">
     <div class="mtitle">Nastavit <em>plán</em></div>
-    <p style="font-size:.73rem;color:var(--muted);margin-bottom:13px;line-height:1.5">Výchozí i vlastní kategorie na jednom místě. Prázdné pole = žádný plán.</p>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:13px;gap:10px;flex-wrap:wrap">
+      <p style="font-size:.73rem;color:var(--muted);line-height:1.5;margin:0">Výchozí i vlastní kategorie na jednom místě. Prázdné pole = žádný plán.</p>
+      <button class="add-btn sec" onclick="copyPrevPlan()" style="flex-shrink:0">📋 Zkopírovat předchozí měsíc</button>
+    </div>
     <div class="plan-scroll" id="planRows"></div>
     <div class="mactions">
       <button class="mbtn-cancel" onclick="close2('overlayPlan')">Zrušit</button>
@@ -921,6 +932,23 @@ function savePlan(){
   saveCurPlan(newLimits,newIncome);
   save(); close2('overlayPlan'); toast('Plán pro '+MONTHS[cM]+' uložen ✓','success'); render();
 }
+function copyPrevPlan(){
+  // Find the most recent past month that has plan data
+  const [ky,km]=ck().split('-').map(Number);
+  const past=Object.keys(S.plans||{})
+    .map(k=>{const[y,m]=k.split('-').map(Number);return{k,y,m};})
+    .filter(({y,m,k})=>planHasData(S.plans[k])&&(y<ky||(y===ky&&m<km)))
+    .sort((a,b)=>a.y!==b.y?a.y-b.y:a.m-b.m);
+  if(!past.length){toast('Žádný předchozí plán nenalezen','warn');return;}
+  const prev=S.plans[past[past.length-1].k];
+  const lim=prev.limits||{}, inc=prev.income||{};
+  document.querySelectorAll('#planRows input[data-pt]').forEach(inp=>{
+    const type=inp.getAttribute('data-pt'),cat=inp.getAttribute('data-pc');
+    const val=type==='income'?inc[cat]:lim[cat];
+    inp.value=val||'';
+  });
+  toast('Hodnoty zkopírovány ✓','success');
+}
 
 let cmTabType='expense';
 function openCatManager(){
@@ -1290,32 +1318,33 @@ function render5030(inc,lim,incA,expA,invA){
   const expPct=Math.min(100,Math.round(totalExp/base*100));
   const invPct=Math.min(100,Math.round(inv/base*100));
   const freePct=Math.max(0,100-expPct-invPct);
-  function bucket(pct,emoji,name,col,target){
-    return '<div class="rule-bucket"><div class="rb-pct" style="color:'+col+'">'+pct+'%</div>'+
-      '<div class="rb-name">'+emoji+' '+name+'</div>'+
-      '<div class="rb-target" style="color:'+col+'">max '+fmt(target)+'</div></div>';
+  function bucket(pct,emoji,name,desc,col,target,actual,hasActual){
+    const p=hasActual&&target>0?Math.min(100,Math.round(actual/target*100)):0;
+    const over=hasActual&&actual>target;
+    return '<div class="rule-bucket">'+
+      '<div class="rb-left">'+
+        '<div class="rb-pct" style="color:'+col+'">'+pct+'%</div>'+
+        '<div><div class="rb-name">'+emoji+' '+name+'</div><div class="rb-desc">'+desc+'</div></div>'+
+      '</div>'+
+      '<div class="rb-right">'+
+        '<div class="rb-amounts">'+
+          '<span class="rb-target" style="color:'+col+'">max '+fmt(target)+'</span>'+
+          (hasActual?'<span class="rb-actual">skut. <strong>'+fmt(actual)+'</strong></span>':'<span class="rb-actual">—</span>')+
+        '</div>'+
+        '<div class="rb-bw"><div class="rb-bf" style="width:'+p+'%;background:'+(over?'var(--rose)':col)+'"></div></div>'+
+        '<div class="rb-used">'+(hasActual?(over?'⚠️ Přečerpáno o <strong>'+fmt(actual-target)+'</strong>':p+'% využito'):'Rozděl ručně v plánování')+'</div>'+
+      '</div>'+
+    '</div>';
   }
   el.innerHTML=
     '<div class="ptitle">Pravidlo 50/30/20 <span style="font-size:.68rem;font-family:Jost,sans-serif;font-weight:400;color:var(--muted)">— doporučené rozdělení příjmu</span></div>'+
-    '<p style="font-size:.71rem;color:var(--muted);line-height:1.55;margin-bottom:4px">Základ: <strong>'+fmt(base)+'</strong>'+(totalIncAct?' (skutečný příjem)':' (plánovaný příjem)')+'</p>'+
+    '<p style="font-size:.71rem;color:var(--muted);line-height:1.55;margin-bottom:8px">Základ: <strong>'+fmt(base)+'</strong>'+(totalIncAct?' (skutečný příjem)':' (plánovaný příjem)')+'</p>'+
     '<div class="rule-buckets">'+
-      bucket('50','🏠','Potřeby','var(--sage)',n50)+
-      bucket('30','🎉','Přání','var(--mauve)',w30)+
-      bucket('20','💎','Spoření','var(--gold)',s20)+
+      bucket('50','🏠','Potřeby','Bydlení, jídlo, energie, pojištění…','var(--sage)',n50,totalExp,true)+
+      bucket('30','🎉','Přání','Zábava, koníčky, oblečení, restaurace…','var(--mauve)',w30,0,false)+
+      bucket('20','💎','Spoření','Investice, rezervy, finanční cíle…','var(--gold)',s20,inv,true)+
     '</div>'+
-    '<div style="margin-top:14px">'+
-      '<div style="display:flex;justify-content:space-between;font-size:.7rem;color:var(--muted);margin-bottom:5px">'+
-        '<span>🌸 Výdaje '+fmt(totalExp)+' ('+expPct+'%)</span>'+
-        '<span>💎 Investice '+fmt(inv)+' ('+invPct+'%)</span>'+
-        '<span>✦ Volné '+fmt(free)+' ('+freePct+'%)</span>'+
-      '</div>'+
-      '<div style="height:9px;background:var(--border);border-radius:9px;overflow:hidden;display:flex">'+
-        '<div style="width:'+expPct+'%;background:var(--rose-mid);transition:width .8s"></div>'+
-        '<div style="width:'+invPct+'%;background:var(--gold);transition:width .8s"></div>'+
-        '<div style="width:'+freePct+'%;background:var(--sage-light);transition:width .8s"></div>'+
-      '</div>'+
-      '<p style="font-size:.67rem;color:var(--muted);margin-top:9px;line-height:1.5">Potřeby = nezbytné výdaje (bydlení, jídlo…) · Přání = zábava, koníčky · Spoření = investice a rezervy. Výdaje výše zahrnují vše — rozděl je v plánování sám.</p>'+
-    '</div>';
+    '<p style="font-size:.67rem;color:var(--muted);margin-top:10px;line-height:1.5">Potřeby zobrazují veškeré výdaje tohoto měsíce. Přání nelze automaticky oddělit od potřeb — sleduj je sám v kategoriích.</p>';
 }
 
 
