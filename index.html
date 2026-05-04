@@ -205,6 +205,7 @@ header{display:flex;flex-direction:column;margin-bottom:20px}
 /* Custom goals list (no scroll limit) */
 .goals-list-full{display:flex;flex-direction:column;gap:9px}
 .sec-label{font-size:.62rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);margin-bottom:10px;padding-left:2px}
+.goals-grid{display:grid;grid-template-columns:3fr 2fr;gap:16px;margin-bottom:16px;align-items:start}
 
 /* Budget */
 .budget-row{padding:9px 0;border-bottom:1px solid var(--border)}
@@ -343,7 +344,7 @@ header{display:flex;flex-direction:column;margin-bottom:20px}
 
 @media(max-width:700px){
   .summary{grid-template-columns:1fr 1fr}
-  .mg,.mg2,.charts-grid,.overview-cols{grid-template-columns:1fr}
+  .mg,.mg2,.charts-grid,.overview-cols,.goals-grid{grid-template-columns:1fr}
   .charts-grid .full{grid-column:span 1}
   .brand-title{font-size:2rem}
   .header-top .month-nav{order:10;flex:0 0 100%}
@@ -618,7 +619,7 @@ header{display:flex;flex-direction:column;margin-bottom:20px}
   </div>
 
   <!-- Custom goals + insights -->
-  <div class="mg2" style="align-items:start">
+  <div class="goals-grid">
     <div class="panel">
       <div class="ptitle">Vlastní cíle <button class="add-btn" onclick="openGoalModal()">+ Přidat cíl</button></div>
       <p style="font-size:.72rem;color:var(--muted);margin-bottom:12px;line-height:1.5">Dovolená, nové auto, telefon… Vklady přidej přes <strong>+ Přidat → 🎯 Cíl</strong>.</p>
@@ -823,6 +824,7 @@ header{display:flex;flex-direction:column;margin-bottom:20px}
           if (cs.ruleRatio)            window.S.ruleRatio = cs.ruleRatio;
           // Synchronizuj localStorage s daty z cloudu
           localStorage.setItem('bb8', JSON.stringify(window.S));
+          window.ensureDefaultFunds();  // re-add default funds if cloud data wiped them
           window.render();
           window.toast('Vítej zpět, ' + user.displayName + '! ✓', 'success');
         } else {
@@ -907,14 +909,22 @@ if(!S.catMeta)    S.catMeta={};
 if(!S.balances)   S.balances={};
 if(!S.ruleRatio)  S.ruleRatio={n:50,w:30,s:20};
 // Ensure the two default emergency funds always exist (cannot be deleted)
-(function ensureDefaultFunds(){
+function ensureDefaultFunds(){
   if(!S.goals) S.goals=[];
-  if(!S.goals.some(g=>g.fundType==='peace'))
+  let changed=false;
+  if(!S.goals.some(g=>g.fundType==='peace')){
     S.goals.unshift({id:Date.now()-2,name:'Klid na duši',emoji:'🕊️',target:0,saved:0,isDefault:true,fundType:'peace'});
-  if(!S.goals.some(g=>g.fundType==='reserve'))
-    S.goals.splice(S.goals.findIndex(g=>g.fundType==='peace')+1,0,{id:Date.now()-1,name:'Rezerva',emoji:'🛡️',target:0,saved:0,isDefault:true,fundType:'reserve'});
-  save();
-})();
+    changed=true;
+  }
+  if(!S.goals.some(g=>g.fundType==='reserve')){
+    const pi=S.goals.findIndex(g=>g.fundType==='peace');
+    S.goals.splice(pi+1,0,{id:Date.now()-1,name:'Rezerva',emoji:'🛡️',target:0,saved:0,isDefault:true,fundType:'reserve'});
+    changed=true;
+  }
+  if(changed) save();
+}
+window.ensureDefaultFunds=ensureDefaultFunds;
+ensureDefaultFunds();
 // Default type for every expense category ('need' = nezbytný, 'want' = radost)
 const DEF_META={
   'Bydlení 🏠':'need','Jídlo 🍔':'need','Doprava 🚗':'need','Zdraví 💊':'need',
