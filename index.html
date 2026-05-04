@@ -320,11 +320,6 @@ header{display:flex;flex-direction:column;margin-bottom:20px}
   .brand-title{font-size:2rem}
   .header-top .month-nav{order:10;flex:0 0 100%}
   #userInfo{display:none}
-  /* Plan bar: blend into page bg, each col floats as its own card */
-  .plan-bar{flex-direction:column;padding:0;background:var(--bg);border:none;box-shadow:none;border-radius:0;gap:10px}
-  .pb-sep{display:none}
-  .pb-col{min-width:0;padding:18px 20px;border-radius:var(--r);background:var(--surface);border:1px solid var(--border);box-shadow:var(--shadow);justify-content:flex-start}
-  .pb-col:first-child{padding-left:20px}
   /* 50/30/20 buckets: stack label + bar vertically */
   .rule-bucket{flex-direction:column;align-items:stretch;gap:8px;padding:12px 14px}
   .rb-left{width:auto;gap:10px}
@@ -346,7 +341,13 @@ header{display:flex;flex-direction:column;margin-bottom:20px}
 .pb-status-head{font-size:.69rem;color:var(--muted);margin-bottom:7px;display:flex;justify-content:space-between;align-items:center}
 .pb-status-pct{font-family:'Cormorant Garamond',serif;font-size:1.1rem;font-weight:600}
 .pb-msg{font-size:.71rem;margin-top:5px;font-weight:500}
-@media(max-width:700px){.pb-col{min-width:140px;padding:0 12px}.pb-col:first-child{padding-left:0}}
+@media(max-width:700px){
+  /* Plan bar: dissolve outer card, each col becomes its own card matching rule-bucket style */
+  .plan-bar{flex-direction:column;padding:0;background:transparent;border:none;box-shadow:none;border-radius:0;gap:10px}
+  .pb-sep{display:none}
+  .pb-col{min-width:0 !important;flex:none !important;padding:14px 18px !important;border-radius:13px !important;background:var(--bg2) !important;border:1px solid var(--border) !important;box-shadow:none !important;justify-content:flex-start}
+  .pb-col:first-child{padding-left:18px !important}
+}
 
 /* Health tooltip */
 .hs-info-btn{font-size:.8rem;color:var(--muted);cursor:pointer;transition:color .2s;user-select:none;line-height:1}
