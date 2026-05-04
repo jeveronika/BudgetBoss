@@ -312,6 +312,23 @@ header{display:flex;flex-direction:column;margin-bottom:20px}
   #userInfo{display:none}
 }
 
+/* Plan bar */
+.plan-bar{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px 22px;margin-bottom:18px;display:flex;align-items:stretch;box-shadow:var(--shadow);flex-wrap:wrap}
+.pb-col{display:flex;flex-direction:column;justify-content:center;flex:1;min-width:155px;padding:0 20px}
+.pb-col:first-child{padding-left:0}
+.pb-col.pb-status{flex:1.3;min-width:210px}
+.pb-sep{width:1px;background:var(--border);flex-shrink:0;margin:2px 0}
+.pb-lbl{font-size:.59rem;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);margin-bottom:5px}
+.pb-val{font-family:'Cormorant Garamond',serif;font-size:1.18rem;font-weight:600;line-height:1.1}
+.pb-sub{font-size:.66rem;color:var(--muted);margin:3px 0 7px}
+.pb-track{height:5px;background:var(--border);border-radius:5px;overflow:hidden;margin-bottom:4px}
+.pb-fill{height:100%;border-radius:5px;transition:width .9s cubic-bezier(.4,0,.2,1)}
+.pb-note{font-size:.63rem;font-weight:500}
+.pb-status-head{font-size:.69rem;color:var(--muted);margin-bottom:7px;display:flex;justify-content:space-between;align-items:center}
+.pb-status-pct{font-family:'Cormorant Garamond',serif;font-size:1.1rem;font-weight:600}
+.pb-msg{font-size:.71rem;margin-top:5px;font-weight:500}
+@media(max-width:700px){.pb-col{min-width:140px;padding:0 12px}.pb-col:first-child{padding-left:0}}
+
 /* Health tooltip */
 .hs-info-btn{font-size:.8rem;color:var(--muted);cursor:pointer;transition:color .2s;user-select:none;line-height:1}
 .hs-info-btn:hover{color:var(--rose)}
@@ -473,7 +490,42 @@ header{display:flex;flex-direction:column;margin-bottom:20px}
 
 <!-- BUDGET -->
 <div id="tab-budget" style="display:none">
-  <div id="budgetSummary" style="margin-bottom:12px"></div>
+  <!-- Plan summary bar -->
+  <div class="plan-bar" id="planBar">
+    <div class="pb-col">
+      <div class="pb-lbl">🌿 Plánovaný příjem</div>
+      <div class="pb-val" id="pbIncVal" style="color:var(--sage)">—</div>
+      <div class="pb-sub" id="pbIncSub"></div>
+      <div class="pb-track"><div class="pb-fill" id="pbIncFill" style="width:0%;background:var(--sage)"></div></div>
+      <div class="pb-note" id="pbIncNote"></div>
+    </div>
+    <div class="pb-sep"></div>
+    <div class="pb-col">
+      <div class="pb-lbl">🌸 Plánované výdaje</div>
+      <div class="pb-val" id="pbExpVal" style="color:var(--rose)">—</div>
+      <div class="pb-sub" id="pbExpSub"></div>
+      <div class="pb-track"><div class="pb-fill" id="pbExpFill" style="width:0%;background:var(--rose-mid)"></div></div>
+      <div class="pb-note" id="pbExpNote"></div>
+    </div>
+    <div class="pb-sep"></div>
+    <div class="pb-col">
+      <div class="pb-lbl">💰 Plánované spoření</div>
+      <div class="pb-val" id="pbSavVal" style="color:var(--mauve)">—</div>
+      <div class="pb-sub" id="pbSavSub"></div>
+      <div class="pb-track"><div class="pb-fill" id="pbSavFill" style="width:0%;background:var(--mauve)"></div></div>
+      <div class="pb-note" id="pbSavNote"></div>
+    </div>
+    <div class="pb-sep"></div>
+    <div class="pb-col pb-status">
+      <div class="pb-status-head">
+        <span>Plánovaná míra spoření</span>
+        <span class="pb-status-pct" id="pbSavRate">—</span>
+      </div>
+      <div class="pb-track"><div class="pb-fill" id="pbRateFill" style="width:0%"></div></div>
+      <div class="pb-msg" id="pbRateMsg">—</div>
+      <div id="pbInherited" style="font-size:.61rem;color:var(--gold);margin-top:5px;display:none">📋 Přenesen z minulého měsíce · ulož pro potvrzení</div>
+    </div>
+  </div>
   <div class="mg">
     <div class="panel">
       <div class="ptitle">Plán kategorií <button class="add-btn" onclick="openPlanModal()">✦ Nastavit</button></div>
@@ -848,6 +900,11 @@ function switchTab(t){
   document.querySelectorAll('.tab-btn').forEach((b,i)=>{
     b.classList.toggle('active',['overview','budget','goals'][i]===t);
   });
+  // Health bar + summary cards only on overview tab
+  const hb=document.querySelector('.health-bar');
+  const sm=document.querySelector('.summary');
+  if(hb) hb.style.display=t==='overview'?'':'none';
+  if(sm) sm.style.display=t==='overview'?'grid':'none';
   render();
 }
 function setFilter(f,el){
@@ -1337,6 +1394,94 @@ function renderDonut(svgId,legId,total,arr){
     '<div class="legend-val">'+Math.round((val/total)*100)+'%</div></div>').join('');
 }
 
+function renderPlanBar(t){
+  const inc=curIncome(), lim=curLimits();
+  const totalIncPlan=Object.values(inc).reduce((s,v)=>s+v,0);
+  const totalExpPlan=Object.values(lim).reduce((s,v)=>s+v,0);
+  const actualInc=t.filter(x=>x.type==='income').reduce((s,x)=>s+x.amount,0);
+  const actualExp=t.filter(x=>x.type==='expense').reduce((s,x)=>s+x.amount,0);
+  const actualInv=t.filter(x=>x.type==='investment').reduce((s,x)=>s+x.amount,0);
+  const planSavings=totalIncPlan-totalExpPlan;
+  const actualNet=actualInc-actualExp-actualInv;
+  // Burn rate: is spending pace ahead of the month progress?
+  const today=new Date();
+  const isCurMon=(cY===today.getFullYear()&&cM===today.getMonth());
+  const monthPct=isCurMon?today.getDate()/new Date(cY,cM+1,0).getDate():1;
+
+  // ── Column 1: Plánovaný příjem ──
+  const incPct=totalIncPlan>0?Math.min(120,Math.round(actualInc/totalIncPlan*100)):0;
+  document.getElementById('pbIncVal').textContent=totalIncPlan>0?fmt(totalIncPlan):'Nenastaveno';
+  document.getElementById('pbIncVal').style.color=totalIncPlan>0?'var(--sage)':'var(--muted)';
+  document.getElementById('pbIncSub').textContent=totalIncPlan>0?'Skutečně: '+fmt(actualInc)+' · '+incPct+' % plánu':'Nastav příjmový plán výše';
+  const incFill=document.getElementById('pbIncFill');
+  incFill.style.width=Math.min(100,incPct)+'%';
+  incFill.style.background=incPct>=100?'var(--sage)':incPct>=70?'var(--gold)':'var(--sage)';
+  const incNote=document.getElementById('pbIncNote');
+  if(totalIncPlan>0){
+    if(incPct>=100){incNote.textContent='✓ Příjmový plán splněn';incNote.style.color='var(--sage)';}
+    else{incNote.textContent=fmt(totalIncPlan-actualInc)+' zbývá do plánu';incNote.style.color='var(--muted)';}
+  } else { incNote.textContent=''; }
+
+  // ── Column 2: Plánované výdaje ──
+  const expPct=totalExpPlan>0?Math.min(120,Math.round(actualExp/totalExpPlan*100)):0;
+  const burnRate=isCurMon&&totalExpPlan>0&&monthPct>0.03?actualExp/totalExpPlan/monthPct:0;
+  document.getElementById('pbExpVal').textContent=totalExpPlan>0?fmt(totalExpPlan):'Nenastaveno';
+  document.getElementById('pbExpVal').style.color=totalExpPlan>0?'var(--rose)':'var(--muted)';
+  document.getElementById('pbExpSub').textContent=totalExpPlan>0?'Skutečně: '+fmt(actualExp)+' · '+expPct+' % limitů':'Nastav limity výdajů výše';
+  const expFill=document.getElementById('pbExpFill');
+  expFill.style.width=Math.min(100,expPct)+'%';
+  expFill.style.background=expPct>100?'var(--rose)':expPct>80?'var(--gold)':'var(--sage)';
+  const expNote=document.getElementById('pbExpNote');
+  if(totalExpPlan>0){
+    if(expPct>100){expNote.textContent='⚠️ Překročeny limity výdajů';expNote.style.color='var(--rose)';}
+    else if(burnRate>1.4&&isCurMon){expNote.textContent='⚡ Výdaje jdou rychleji než měsíc';expNote.style.color='var(--gold)';}
+    else if(expPct>=80){expNote.textContent='⚠️ Blízko maxima limitů';expNote.style.color='var(--gold)';}
+    else{expNote.textContent=fmt(totalExpPlan-actualExp)+' zbývá z limitů';expNote.style.color='var(--muted)';}
+  } else { expNote.textContent=''; }
+
+  // ── Column 3: Plánované spoření ──
+  document.getElementById('pbSavVal').textContent=totalIncPlan>0?fmt(Math.max(0,planSavings)):'—';
+  document.getElementById('pbSavVal').style.color=planSavings>0?'var(--mauve)':planSavings<0?'var(--rose)':'var(--muted)';
+  document.getElementById('pbSavSub').textContent=totalIncPlan>0?'Skutečně: '+fmt(actualNet)+(actualNet>planSavings&&planSavings>0?' · 🎉 nad plán':''):'Nastav příjmy a výdaje';
+  const savPct=planSavings>0?Math.min(100,Math.round(Math.max(0,actualNet)/planSavings*100)):0;
+  const savFill=document.getElementById('pbSavFill');
+  savFill.style.width=savPct+'%';
+  savFill.style.background=actualNet>=planSavings&&planSavings>0?'var(--sage)':'var(--mauve)';
+  const savNote=document.getElementById('pbSavNote');
+  if(totalIncPlan>0){
+    if(planSavings<0){savNote.textContent='⚠️ Plán nemá rezervu na spoření';savNote.style.color='var(--rose)';}
+    else if(planSavings===0){savNote.textContent='Plán přesně vyrovnaný — bez rezervy';savNote.style.color='var(--muted)';}
+    else if(actualNet>=planSavings){savNote.textContent='✓ Spoření splněno nebo nad plán';savNote.style.color='var(--sage)';}
+    else if(actualNet<0){savNote.textContent='⚠️ Tento měsíc v deficitu';savNote.style.color='var(--rose)';}
+    else{savNote.textContent=savPct+'% cílového spoření dosaženo';savNote.style.color='var(--muted)';}
+  } else { savNote.textContent=''; }
+
+  // ── Panel 4: Plánovaná míra spoření (plan health) ──
+  const savingsRate=totalIncPlan>0?Math.round(Math.max(0,planSavings)/totalIncPlan*100):0;
+  const sr=document.getElementById('pbSavRate');
+  const rf=document.getElementById('pbRateFill');
+  const rm=document.getElementById('pbRateMsg');
+  const pi=document.getElementById('pbInherited');
+  if(!totalIncPlan&&!totalExpPlan){
+    if(sr){sr.textContent='—';sr.style.color='var(--muted)';}
+    if(rf) rf.style.cssText='width:0%';
+    if(rm){rm.textContent='☝️ Nastav plán tlačítkem Nastavit';rm.style.color='var(--muted)';}
+  } else if(planSavings<0){
+    if(sr){sr.textContent='0%';sr.style.color='var(--rose)';}
+    if(rf) rf.style.cssText='width:100%;background:var(--rose)';
+    if(rm){rm.textContent='⚠️ Výdaje o '+fmt(Math.abs(planSavings))+' nad plánovaným příjmem';rm.style.color='var(--rose)';}
+  } else {
+    const col=savingsRate>=20?'var(--sage)':savingsRate>=10?'var(--gold)':'var(--rose)';
+    if(sr){sr.textContent=savingsRate+'%';sr.style.color=col;}
+    if(rf) rf.style.cssText='width:'+Math.min(100,savingsRate*2.5)+'%;background:'+col;
+    if(rm){
+      rm.textContent=savingsRate>=20?'✓ Nad doporučenou hranicí 20 % — skvělé!':savingsRate>=10?'🌿 Blízko cíle 20 % — ještě trochu':'⚠️ Pod doporučenou hranicí 20 %';
+      rm.style.color=col;
+    }
+  }
+  if(pi) pi.style.display=(!S.plans[ck()]&&(totalIncPlan||totalExpPlan))?'':'none';
+}
+
 function renderBudget(t){
   const expTxs=t.filter(x=>x.type==='expense');
   const expA={},incA={};
@@ -1347,21 +1492,8 @@ function renderBudget(t){
   const allInc=[...new Set([...Object.keys(inc),...Object.keys(incA)])];
   const allExp=[...new Set([...Object.keys(lim),...Object.keys(expA)])];
   const le=document.getElementById('budgetList');
-  const sw=document.getElementById('budgetSummary');
 
-  /* ── summary / warnings ── */
-  const totalIncPlan=Object.values(inc).reduce((s,v)=>s+v,0);
-  const totalExpPlan=Object.values(lim).reduce((s,v)=>s+v,0);
-  const isInherited=!S.plans[ck()];
-  let swHtml='';
-  if(isInherited&&(totalIncPlan||totalExpPlan)){
-    swHtml+='<div style="font-size:.72rem;color:#9a7a3a;background:var(--gold-light);border:1px solid #e8d090;border-radius:10px;padding:9px 14px;margin-bottom:10px;display:flex;align-items:center;gap:9px">📋 <span>Plán přenesen z předchozího měsíce. Klikni <strong>✦ Nastavit</strong> a ulož pro uložení konkrétního plánu tohoto měsíce.</span></div>';
-  }
-  if(totalIncPlan>0&&totalExpPlan>totalIncPlan){
-    const over=totalExpPlan-totalIncPlan;
-    swHtml+='<div style="font-size:.77rem;color:#b06020;background:#fff3e0;border:1px solid #f0c060;border-radius:10px;padding:10px 14px;margin-bottom:10px;display:flex;align-items:center;gap:9px"><span style="font-size:1.15rem;flex-shrink:0">⚠️</span><span>Plánuješ o <strong>'+fmt(over)+'</strong> více výdajů než příjmů! Doporuč snížit limity nebo navýšit příjmový plán.</span></div>';
-  }
-  if(sw) sw.innerHTML=swHtml;
+  renderPlanBar(t);
 
   if(!allInc.length&&!allExp.length){
     le.innerHTML='<div class="empty"><strong>🗓</strong>Nastav plán tlačítkem výše.</div>';
@@ -1420,7 +1552,7 @@ function render5030(inc,lim,incA,expTxs,invA){
   }
   el.innerHTML=
     '<div class="ptitle">Pravidlo 50/30/20 <span style="font-size:.68rem;font-family:Jost,sans-serif;font-weight:400;color:var(--muted)">— doporučené rozdělení příjmu</span></div>'+
-    '<p style="font-size:.71rem;color:var(--muted);line-height:1.55;margin-bottom:8px">Základ: <strong>'+fmt(base)+'</strong>'+(totalIncAct?' (skutečný příjem)':' (plánovaný příjem)')+' · Kategorie taguj v <strong>Správě kategorií → Výdaje</strong></p>'+
+    '<p style="font-size:.71rem;color:var(--muted);line-height:1.55;margin-bottom:8px">Základ: <strong>'+fmt(base)+'</strong>'+(totalIncAct?' (skutečný příjem)':' (plánovaný příjem)')+' · Při přidání výdaje zvol <strong>🏠 Nezbytný</strong> nebo <strong>🎉 Radost</strong></p>'+
     '<div class="rule-buckets">'+
       bucket('50','🏠','Potřeby','Bydlení, jídlo, energie, zdraví…','var(--sage)',n50,needsExp)+
       bucket('30','🎉','Přání','Zábava, koníčky, oblečení, krása…','var(--mauve)',w30,wantsExp)+
