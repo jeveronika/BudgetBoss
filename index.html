@@ -317,14 +317,14 @@ header{display:flex;flex-direction:column;margin-bottom:20px}
   .summary{grid-template-columns:1fr 1fr}
   .mg,.mg2,.charts-grid,.overview-cols{grid-template-columns:1fr}
   .charts-grid .full{grid-column:span 1}
-  .brand-title{font-size:2rem}.form-row{grid-template-columns:1fr}
+  .brand-title{font-size:2rem}
   .header-top .month-nav{order:10;flex:0 0 100%}
   #userInfo{display:none}
-  /* Plan bar: outer becomes invisible, each column is a standalone card */
-  .plan-bar{flex-direction:column;padding:0;background:transparent;border:none;box-shadow:none;border-radius:0;gap:10px}
+  /* Plan bar: blend into page bg, each col floats as its own card */
+  .plan-bar{flex-direction:column;padding:0;background:var(--bg);border:none;box-shadow:none;border-radius:0;gap:10px}
   .pb-sep{display:none}
-  .pb-col{min-width:0;padding:16px 18px;border-radius:var(--r);background:var(--surface);border:1px solid var(--border);box-shadow:var(--shadow);justify-content:flex-start}
-  .pb-col:first-child{padding-left:18px}
+  .pb-col{min-width:0;padding:18px 20px;border-radius:var(--r);background:var(--surface);border:1px solid var(--border);box-shadow:var(--shadow);justify-content:flex-start}
+  .pb-col:first-child{padding-left:20px}
   /* 50/30/20 buckets: stack label + bar vertically */
   .rule-bucket{flex-direction:column;align-items:stretch;gap:8px;padding:12px 14px}
   .rb-left{width:auto;gap:10px}
