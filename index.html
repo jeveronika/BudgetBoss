@@ -403,12 +403,12 @@ header{display:flex;flex-direction:column;margin-bottom:20px}
   <div class="s-card income"><div class="s-deco"></div><span class="s-icon">🌿</span><div class="s-label">Příjmy</div><div class="s-value" id="sIncome">0 Kč</div><div class="s-sub" id="sIncomeC">0 položek</div><div class="pbar"><div class="pfill" style="width:100%"></div></div></div>
   <div class="s-card expense"><div class="s-deco"></div><span class="s-icon">🌸</span><div class="s-label">Výdaje</div><div class="s-value" id="sExpense">0 Kč</div><div class="s-sub" id="sExpenseC">0 položek</div><div class="pbar"><div class="pfill" id="pExpense" style="width:0%"></div></div></div>
   <div class="s-card invest"><div class="s-deco"></div><span class="s-icon">💎</span><div class="s-label">Investice</div><div class="s-value" id="sInvest">0 Kč</div><div class="s-sub" id="sInvestC">0 položek</div><div class="pbar"><div class="pfill" id="pInvest" style="width:0%"></div></div></div>
-  <div class="s-card balance" onclick="openBalanceModal()" style="cursor:pointer" title="Klikni pro nastavení počátečního zůstatku">
+  <div class="s-card balance">
     <div class="s-deco"></div><span class="s-icon">💳</span>
-    <div class="s-label">Zůstatek účtu</div>
+    <div class="s-label">Měsíční přebytek</div>
     <div class="s-value" id="sBalance">0 Kč</div>
     <div class="s-sub" id="sBalanceSub">—</div>
-    <div id="sBalanceStart" style="font-size:.6rem;color:var(--muted);margin-top:3px">✎ Nastavit počáteční</div>
+    <button id="sCarryBtn" onclick="addCarryoverIncome()" style="display:none;font-size:.6rem;color:var(--mauve);background:none;border:none;cursor:pointer;margin-top:3px;padding:0;font-family:'Jost',sans-serif;text-align:left;text-decoration:underline dotted"></button>
     <div class="pbar"><div class="pfill" id="pBalance" style="width:0%"></div></div>
   </div>
 </div>
@@ -623,20 +623,6 @@ header{display:flex;flex-direction:column;margin-bottom:20px}
   </div>
 </div>
 
-<div class="overlay" id="overlayBalance">
-  <div class="modal-sm">
-    <div class="mtitle">Zůstatek <em>účtu</em></div>
-    <p style="font-size:.73rem;color:var(--muted);margin-bottom:14px;line-height:1.5">Zadej aktuální zůstatek na svých účtech pro <strong id="balMonthLabel"></strong>. Při přechodu do dalšího měsíce se přenese automaticky.</p>
-    <div class="fg">
-      <label>Počáteční zůstatek (Kč)</label>
-      <input id="balanceInput" type="number" step="1" placeholder="např. 50000" min="0">
-    </div>
-    <div class="mactions">
-      <button class="mbtn-cancel" onclick="close2('overlayBalance')">Zrušit</button>
-      <button class="mbtn-ok" onclick="saveStartBalance()">Uložit</button>
-    </div>
-  </div>
-</div>
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
@@ -775,15 +761,7 @@ save();
 
 function save(){ localStorage.setItem('bb8',JSON.stringify(S)); if(window.saveToCloud) window.saveToCloud(); }
 if(!S.catMeta)   S.catMeta={};
-if(!S.balances)  S.balances={};
-function startBal(){ return S.balances[ck()]||0; }
-function realBal(t,key){
-  const s=S.balances[key||ck()]||0;
-  const inc=t.filter(x=>x.type==='income').reduce((a,x)=>a+x.amount,0);
-  const exp=t.filter(x=>x.type==='expense').reduce((a,x)=>a+x.amount,0);
-  const inv=t.filter(x=>x.type==='investment').reduce((a,x)=>a+x.amount,0);
-  return s+inc-exp-inv;
-}
+if(!S.balances)  S.balances={}; // kept for backwards compat, not actively used
 // Default type for every expense category ('need' = nezbytný, 'want' = radost)
 const DEF_META={
   'Bydlení 🏠':'need','Jídlo 🍔':'need','Doprava 🚗':'need','Zdraví 💊':'need',
@@ -854,17 +832,11 @@ document.querySelectorAll('.overlay').forEach(el=>{
 });
 
 function changeMonth(d){
-  const prevKey=ck(), prevTxs=S.data[prevKey]||[];
   cM+=d; if(cM>11){cM=0;cY++;}if(cM<0){cM=11;cY--;}
-  // Auto-copy plan
+  // Auto-copy plan to new month if none exists
   if(!planHasData(S.plans[ck()])){
     const inherited=getPlan(ck());
     if(planHasData(inherited)){S.plans[ck()]=JSON.parse(JSON.stringify(inherited));save();}
-  }
-  // Auto-carry balance when going forward to a month that has no balance set yet
-  if(d>0 && S.balances[ck()]===undefined){
-    S.balances[ck()]=realBal(prevTxs,prevKey);
-    save();
   }
   render();
 }
@@ -941,17 +913,20 @@ function addTransaction(){
   save(); close2('overlayTx'); render();
 }
 function deleteTx(id){ const k=ck(); S.data[k]=(S.data[k]||[]).filter(t=>t.id!==id); save(); toast('Smazáno'); render(); }
-function openBalanceModal(){
-  document.getElementById('balMonthLabel').textContent=MONTHS[cM]+' '+cY;
-  document.getElementById('balanceInput').value=startBal()||'';
-  document.getElementById('overlayBalance').classList.add('open');
-  setTimeout(()=>document.getElementById('balanceInput').focus(),80);
-}
-function saveStartBalance(){
-  const v=parseFloat(document.getElementById('balanceInput').value);
-  if(isNaN(v)){toast('Zadej platné číslo','warn');return;}
-  S.balances[ck()]=v;
-  save(); close2('overlayBalance'); toast('Počáteční zůstatek uložen ✓','success'); render();
+function addCarryoverIncome(){
+  // Compute previous month's net balance
+  let pm=cM-1,py=cY; if(pm<0){pm=11;py--;}
+  const prevKey=`${py}-${pm}`;
+  const pt=S.data[prevKey]||[];
+  const prevNet=pt.filter(x=>x.type==='income').reduce((a,x)=>a+x.amount,0)
+               -pt.filter(x=>x.type==='expense').reduce((a,x)=>a+x.amount,0)
+               -pt.filter(x=>x.type==='investment').reduce((a,x)=>a+x.amount,0);
+  if(prevNet<=0){toast('Minulý měsíc neměl kladný přebytek','warn');return;}
+  const k=ck(); if(!S.data[k])S.data[k]=[];
+  const alreadyAdded=(S.data[k]).some(x=>x.type==='income'&&x.cat==='Přenesený zůstatek 💰');
+  if(alreadyAdded){toast('Zůstatek z minulého měsíce byl již přidán','warn');return;}
+  S.data[k].push({id:Date.now(),type:'income',name:'Zůstatek z '+MONTHS[pm],amount:Math.round(prevNet),cat:'Přenesený zůstatek 💰',date:fd(new Date(cY,cM,1))});
+  save(); toast('Přidáno '+fmt(prevNet)+' jako příjem ✓','success'); render();
 }
 
 function openGoalModal(){
@@ -1131,29 +1106,37 @@ function render(){
   const expense=t.filter(x=>x.type==='expense').   reduce((s,x)=>s+x.amount,0);
   const invest =t.filter(x=>x.type==='investment').reduce((s,x)=>s+x.amount,0);
   const monthNet=income-expense-invest;
-  const balance=monthNet; // kept for legacy compat
-  const sb=startBal();
-  const effectiveBal=sb+monthNet;
   const rate=income>0?Math.round((invest/income)*100):0;
 
   document.getElementById('sIncome').textContent=fmt(income);
   document.getElementById('sExpense').textContent=fmt(expense);
   document.getElementById('sInvest').textContent=fmt(invest);
-  document.getElementById('sBalance').textContent=fmt(effectiveBal);
+  document.getElementById('sBalance').textContent=fmt(monthNet);
   document.getElementById('sIncomeC').textContent=t.filter(x=>x.type==='income').length+' položek';
   document.getElementById('sExpenseC').textContent=t.filter(x=>x.type==='expense').length+' položek';
   document.getElementById('sInvestC').textContent=t.filter(x=>x.type==='investment').length+' položek';
-  document.getElementById('sBalanceSub').textContent=(monthNet>=0?'↑ +':' ↓ ')+fmt(Math.abs(monthNet))+' tento měsíc';
-  document.getElementById('sBalanceStart').textContent=sb?'Počáteční: '+fmt(sb)+' · ✎ upravit':'✎ Nastavit počáteční zůstatek';
+  document.getElementById('sBalanceSub').textContent=income>0?(monthNet>=0?'✓ v plusu tento měsíc':'↓ deficit tento měsíc'):'Přidej příjmy a výdaje';
   document.getElementById('pExpense').style.width=(income>0?Math.min(100,(expense/income)*100):0)+'%';
   document.getElementById('pInvest').style.width=(income>0?Math.min(100,(invest/income)*100):0)+'%';
-  document.getElementById('pBalance').style.width=(income>0?Math.max(0,Math.min(100,Math.abs(effectiveBal/Math.max(income,sb||income))*100)):0)+'%';
+  document.getElementById('pBalance').style.width=(income>0?Math.max(0,Math.min(100,(monthNet/income)*100)):0)+'%';
+  // Carry button: show if previous month had a positive net and it hasn't been added yet
+  const carryBtn=document.getElementById('sCarryBtn');
+  if(carryBtn){
+    let pm=cM-1,py=cY; if(pm<0){pm=11;py--;}
+    const pKey=`${py}-${pm}`, pt=S.data[pKey]||[];
+    const prevNet=pt.filter(x=>x.type==='income').reduce((a,x)=>a+x.amount,0)
+                 -pt.filter(x=>x.type==='expense').reduce((a,x)=>a+x.amount,0)
+                 -pt.filter(x=>x.type==='investment').reduce((a,x)=>a+x.amount,0);
+    const alreadyAdded=(S.data[ck()]||[]).some(x=>x.type==='income'&&x.cat==='Přenesený zůstatek 💰');
+    if(prevNet>0&&!alreadyAdded){carryBtn.style.display='';carryBtn.textContent='📥 Přidat '+fmt(prevNet)+' z '+MS[pm];}
+    else{carryBtn.style.display='none';}
+  }
 
   // Health score
   let h=0;
   if(income>0)h+=20; if(expense<income)h+=20;
   if(rate>=20)h+=25; else if(rate>=10)h+=12;
-  if(S.goals.length>0)h+=15; if(Object.keys(curLimits()).length>0)h+=10; if(effectiveBal>0)h+=10;
+  if(S.goals.length>0)h+=15; if(Object.keys(curLimits()).length>0)h+=10; if(monthNet>0)h+=10;
   h=Math.min(100,h);
   const hc=h>=70?'var(--sage)':h>=40?'var(--gold)':'var(--rose)';
   const hm=h>=80?'💚 Výborné finanční zdraví!':h>=60?'🌿 Dobré — ještě trochu zapracovat':h>=40?'⚠️ Průměrné — nastav si plán':'🌸 Začni přidáním příjmů a cílů';
