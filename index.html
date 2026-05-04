@@ -284,6 +284,16 @@ header{display:flex;flex-direction:column;margin-bottom:20px}
 .rb-bw{height:7px;background:var(--border);border-radius:7px;overflow:hidden}
 .rb-bf{height:100%;border-radius:7px;transition:width .9s cubic-bezier(.4,0,.2,1)}
 .rb-used{font-size:.67rem;color:var(--muted)}
+/* Rule presets */
+.rule-presets{display:flex;gap:5px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+.rule-preset{padding:3px 10px;border-radius:20px;border:1px solid var(--border);background:none;font-family:'Jost',sans-serif;font-size:.67rem;cursor:pointer;color:var(--muted);transition:all .2s;white-space:nowrap}
+.rule-preset:hover:not(.active){border-color:var(--border2);color:var(--text2)}
+.rule-preset.active{background:var(--rose-light);border-color:var(--rose-mid);color:var(--rose);font-weight:600}
+.rule-custom-row{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:10px;padding:9px 11px;background:var(--bg2);border-radius:10px;border:1px solid var(--border)}
+.rule-custom-row label{font-size:.63rem;color:var(--muted);white-space:nowrap}
+.rule-num-inp{width:44px;background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:4px 6px;font-size:.78rem;font-family:'Jost',sans-serif;color:var(--text);outline:none;text-align:center}
+.rule-num-inp:focus{border-color:var(--rose-mid)}
+
 /* Toasts */
 .toast-wrap{position:fixed;bottom:90px;right:22px;display:flex;flex-direction:column;gap:7px;z-index:300;pointer-events:none}
 .toast{background:var(--text);color:#fff;border-radius:12px;padding:9px 15px;font-size:.78rem;font-family:'Jost',sans-serif;box-shadow:0 4px 18px rgba(0,0,0,.18);animation:tIn .28s ease;max-width:260px}
@@ -515,16 +525,7 @@ header{display:flex;flex-direction:column;margin-bottom:20px}
       <div class="pb-track"><div class="pb-fill" id="pbSavFill" style="width:0%"></div></div>
       <div class="pb-note" id="pbSavNote"></div>
     </div>
-    <div class="pb-sep"></div>
-    <div class="pb-col pb-status">
-      <div class="pb-status-head">
-        <span>Plánovaná míra spoření</span>
-        <span class="pb-status-pct" id="pbSavRate">—</span>
-      </div>
-      <div class="pb-track"><div class="pb-fill" id="pbRateFill" style="width:0%"></div></div>
-      <div class="pb-msg" id="pbRateMsg">—</div>
-      <div id="pbInherited" style="font-size:.61rem;color:var(--gold);margin-top:5px;display:none">📋 Přenesen z minulého měsíce · ulož pro potvrzení</div>
-    </div>
+    <div id="pbInherited" style="display:none;align-self:center;font-size:.62rem;color:var(--gold);padding-left:18px;flex-shrink:0">📋 Přenesen<br>z min. měsíce</div>
   </div>
   <div class="mg">
     <div class="panel">
@@ -727,8 +728,9 @@ header{display:flex;flex-direction:column;margin-bottom:20px}
           if (cs.data)                 window.S.data    = cs.data;
           if (Array.isArray(cs.goals)) window.S.goals   = cs.goals;
           if (cs.plans)                window.S.plans   = cs.plans;
-          if (cs.catMeta)              window.S.catMeta  = cs.catMeta;
-          if (cs.balances)             window.S.balances = cs.balances;
+          if (cs.catMeta)              window.S.catMeta   = cs.catMeta;
+          if (cs.balances)             window.S.balances  = cs.balances;
+          if (cs.ruleRatio)            window.S.ruleRatio = cs.ruleRatio;
           // Synchronizuj localStorage s daty z cloudu
           localStorage.setItem('bb8', JSON.stringify(window.S));
           window.render();
@@ -812,8 +814,9 @@ for(let i=1;i<=5;i++){
 save();
 
 function save(){ localStorage.setItem('bb8',JSON.stringify(S)); if(window.saveToCloud) window.saveToCloud(); }
-if(!S.catMeta)   S.catMeta={};
-if(!S.balances)  S.balances={}; // kept for backwards compat, not actively used
+if(!S.catMeta)    S.catMeta={};
+if(!S.balances)   S.balances={};
+if(!S.ruleRatio)  S.ruleRatio={n:50,w:30,s:20};
 // Default type for every expense category ('need' = nezbytný, 'want' = radost)
 const DEF_META={
   'Bydlení 🏠':'need','Jídlo 🍔':'need','Doprava 🚗':'need','Zdraví 💊':'need',
@@ -1470,30 +1473,25 @@ function renderPlanBar(t){
     savNote.textContent=suggestion; savNote.style.color=suggCol;
   }
 
-  // ── Panel 4: Plánovaná míra spoření (plan health) ──
-  const savingsRate=totalIncPlan>0?Math.round(Math.max(0,planSavings)/totalIncPlan*100):0;
-  const sr=document.getElementById('pbSavRate');
-  const rf=document.getElementById('pbRateFill');
-  const rm=document.getElementById('pbRateMsg');
   const pi=document.getElementById('pbInherited');
-  if(!totalIncPlan&&!totalExpPlan){
-    if(sr){sr.textContent='—';sr.style.color='var(--muted)';}
-    if(rf) rf.style.cssText='width:0%';
-    if(rm){rm.textContent='☝️ Nastav plán tlačítkem Nastavit';rm.style.color='var(--muted)';}
-  } else if(planSavings<0){
-    if(sr){sr.textContent='0%';sr.style.color='var(--rose)';}
-    if(rf) rf.style.cssText='width:100%;background:var(--rose)';
-    if(rm){rm.textContent='⚠️ Výdaje o '+fmt(Math.abs(planSavings))+' nad plánovaným příjmem';rm.style.color='var(--rose)';}
-  } else {
-    const col=savingsRate>=20?'var(--sage)':savingsRate>=10?'var(--gold)':'var(--rose)';
-    if(sr){sr.textContent=savingsRate+'%';sr.style.color=col;}
-    if(rf) rf.style.cssText='width:'+Math.min(100,savingsRate*2.5)+'%;background:'+col;
-    if(rm){
-      rm.textContent=savingsRate>=20?'✓ Nad doporučenou hranicí 20 % — skvělé!':savingsRate>=10?'🌿 Blízko cíle 20 % — ještě trochu':'⚠️ Pod doporučenou hranicí 20 %';
-      rm.style.color=col;
-    }
-  }
-  if(pi) pi.style.display=(!S.plans[ck()]&&(totalIncPlan||totalExpPlan))?'':'none';
+  if(pi) pi.style.display=(!S.plans[ck()]&&(totalIncPlan||totalExpPlan))?'flex':'none';
+}
+
+function applyRulePreset(n,w,s){
+  S.ruleRatio={n,w,s}; save();
+  if(activeTab==='budget') render();
+}
+function saveCustomRule(){
+  const n=parseInt(document.getElementById('ruleN').value)||0;
+  const w=parseInt(document.getElementById('ruleW').value)||0;
+  const s=parseInt(document.getElementById('ruleS').value)||0;
+  if(n+w+s!==100){toast('Součet musí být přesně 100 %','warn');return;}
+  if(n<0||w<0||s<0){toast('Hodnoty musí být kladné','warn');return;}
+  S.ruleRatio={n,w,s}; save(); render(); toast('Vlastní poměr uložen ✓','success');
+}
+function toggleCustomRule(){
+  const row=document.getElementById('customRuleRow');
+  if(row) row.style.display=row.style.display==='none'?'flex':'none';
 }
 
 function renderBudget(t){
@@ -1537,15 +1535,23 @@ function render5030(inc,lim,incA,expTxs,invA){
   const totalIncPlan=Object.values(inc).reduce((s,v)=>s+v,0);
   const totalIncAct=Object.values(incA).reduce((s,v)=>s+v,0);
   const base=totalIncAct||totalIncPlan;
+  const rr=S.ruleRatio||{n:50,w:30,s:20};
+  const pN=rr.n,pW=rr.w,pS=rr.s;
+
   if(!base){
-    el.innerHTML='<div class="ptitle">Pravidlo 50/30/20</div><div class="empty" style="margin:0">Nastav příjem v plánu nebo přidej příjmovou transakci.</div>';
+    el.innerHTML='<div class="ptitle">Pravidlo '+pN+'/'+pW+'/'+pS+'</div><div class="empty" style="margin:0">Nastav příjem v plánu nebo přidej příjmovou transakci.</div>';
     return;
   }
-  const n50=Math.round(base*.5),w30=Math.round(base*.3),s20=Math.round(base*.2);
-  // Split expenses by tx.kind set at transaction level
+  const tN=Math.round(base*pN/100),tW=Math.round(base*pW/100),tS=Math.round(base*pS/100);
   let needsExp=0,wantsExp=0;
   (expTxs||[]).forEach(tx=>{ if(tx.kind==='want') wantsExp+=tx.amount; else needsExp+=tx.amount; });
   const inv=invA||0;
+
+  // Which preset is active?
+  const presets=[[50,30,20],[60,20,20],[70,20,10]];
+  const isCustom=!presets.some(([n,w,s])=>n===pN&&w===pW&&s===pS);
+  function pBtn(n,w,s){ const a=(n===pN&&w===pW&&s===pS&&!isCustom)?'active':''; return '<button class="rule-preset '+a+'" onclick="applyRulePreset('+n+','+w+','+s+')">'+n+'/'+w+'/'+s+'</button>'; }
+
   function bucket(pct,emoji,name,desc,col,target,actual){
     const p=target>0?Math.min(100,Math.round(actual/target*100)):0;
     const over=actual>target&&actual>0;
@@ -1564,14 +1570,62 @@ function render5030(inc,lim,incA,expTxs,invA){
       '</div>'+
     '</div>';
   }
+
+  // Daily budget limit (current month only)
+  const today=new Date();
+  const isCurMon=(cY===today.getFullYear()&&cM===today.getMonth());
+  let dailyHtml='';
+  if(isCurMon){
+    const totalExpPlanHere=Object.values(lim).reduce((s,v)=>s+v,0);
+    const actualExpHere=(expTxs||[]).reduce((s,x)=>s+x.amount,0);
+    const daysInMonth=new Date(cY,cM+1,0).getDate();
+    const dayNum=today.getDate();
+    const daysLeft=daysInMonth-dayNum; // days after today
+    const remaining=totalExpPlanHere-actualExpHere;
+    const daysPct=Math.round(dayNum/daysInMonth*100);
+    if(totalExpPlanHere>0){
+      const dailyLim=daysLeft>0?Math.round(remaining/daysLeft):0;
+      const limCol=dailyLim>0?'var(--sage)':'var(--rose)';
+      const barCol=daysPct>80?'var(--rose)':daysPct>50?'var(--gold)':'var(--mauve)';
+      dailyHtml='<div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">'+
+        '<div style="font-size:.68rem;font-weight:600;color:var(--text2);margin-bottom:9px">📅 Denní limit výdajů</div>'+
+        '<div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:7px">'+
+          '<span style="font-family:\'Cormorant Garamond\',serif;font-size:1.5rem;font-weight:600;color:'+limCol+'">'+
+            (dailyLim>0?fmt(dailyLim):'Přečerpáno')+'</span>'+
+          '<span style="font-size:.66rem;color:var(--muted)">zbývá '+daysLeft+' dní</span>'+
+        '</div>'+
+        '<div style="height:5px;background:var(--border);border-radius:5px;overflow:hidden;margin-bottom:5px">'+
+          '<div style="width:'+daysPct+'%;height:100%;background:'+barCol+';border-radius:5px;transition:width .8s"></div>'+
+        '</div>'+
+        '<div style="font-size:.63rem;color:var(--muted)">'+daysPct+' % měsíce uplynulo · '+
+          (remaining>0?fmt(remaining)+' zbývá v limitech':'⚠️ Limity překročeny o '+fmt(Math.abs(remaining)))+
+        '</div>'+
+      '</div>';
+    }
+  }
+
   el.innerHTML=
-    '<div class="ptitle">Pravidlo 50/30/20 <span style="font-size:.68rem;font-family:Jost,sans-serif;font-weight:400;color:var(--muted)">— doporučené rozdělení příjmu</span></div>'+
-    '<p style="font-size:.71rem;color:var(--muted);line-height:1.55;margin-bottom:8px">Základ: <strong>'+fmt(base)+'</strong>'+(totalIncAct?' (skutečný příjem)':' (plánovaný příjem)')+' · Při přidání výdaje zvol <strong>🏠 Nezbytný</strong> nebo <strong>🎉 Radost</strong></p>'+
+    '<div class="ptitle">Pravidlo '+pN+'/'+pW+'/'+pS+
+      ' <span style="font-size:.68rem;font-family:Jost,sans-serif;font-weight:400;color:var(--muted)">— rozdělení příjmu</span></div>'+
+    '<div class="rule-presets">'+
+      '<span style="font-size:.62rem;color:var(--muted);flex-shrink:0">Poměr:</span>'+
+      pBtn(50,30,20)+pBtn(60,20,20)+pBtn(70,20,10)+
+      '<button class="rule-preset'+(isCustom?' active':'')+'" onclick="toggleCustomRule()">✏️ Vlastní</button>'+
+    '</div>'+
+    '<div class="rule-custom-row" id="customRuleRow" style="display:'+(isCustom?'flex':'none')+'">'+
+      '<label>Potřeby</label><input class="rule-num-inp" id="ruleN" type="number" min="0" max="100" value="'+pN+'"><label>%</label>'+
+      '<label style="margin-left:6px">Přání</label><input class="rule-num-inp" id="ruleW" type="number" min="0" max="100" value="'+pW+'"><label>%</label>'+
+      '<label style="margin-left:6px">Spoření</label><input class="rule-num-inp" id="ruleS" type="number" min="0" max="100" value="'+pS+'"><label>%</label>'+
+      '<button class="cat-save-btn" onclick="saveCustomRule()" style="margin-left:4px">✓ Uložit</button>'+
+    '</div>'+
+    '<p style="font-size:.7rem;color:var(--muted);line-height:1.55;margin-bottom:10px">Základ: <strong>'+fmt(base)+'</strong>'+(totalIncAct?' (skutečný příjem)':' (plánovaný příjem)')+
+      ' · Při přidání výdaje zvol <strong>🏠 Nezbytný</strong> nebo <strong>🎉 Radost</strong></p>'+
     '<div class="rule-buckets">'+
-      bucket('50','🏠','Potřeby','Bydlení, jídlo, energie, zdraví…','var(--sage)',n50,needsExp)+
-      bucket('30','🎉','Přání','Zábava, koníčky, oblečení, krása…','var(--mauve)',w30,wantsExp)+
-      bucket('20','💎','Spoření','Investice, rezervy, finanční cíle…','var(--gold)',s20,inv)+
-    '</div>';
+      bucket(pN,'🏠','Potřeby','Bydlení, jídlo, energie, zdraví…','var(--sage)',tN,needsExp)+
+      bucket(pW,'🎉','Přání','Zábava, koníčky, oblečení, krása…','var(--mauve)',tW,wantsExp)+
+      bucket(pS,'💎','Spoření','Investice, rezervy, finanční cíle…','var(--gold)',tS,inv)+
+    '</div>'+
+    dailyHtml;
 }
 
 
