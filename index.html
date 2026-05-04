@@ -178,6 +178,34 @@ header{display:flex;flex-direction:column;margin-bottom:20px}
 .gbtn:hover{border-color:var(--rose-mid);color:var(--rose);background:var(--rose-light)}
 .gbtn.del:hover{border-color:#e08080;color:#c05050;background:#fdf0f0}
 
+/* Savings tab bar */
+.sv-bar{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px 22px;margin-bottom:18px;display:flex;align-items:stretch;box-shadow:var(--shadow);flex-wrap:wrap}
+.sv-col{display:flex;flex-direction:column;justify-content:center;flex:1;min-width:130px;padding:0 18px}
+.sv-col:first-child{padding-left:0}
+.sv-sep{width:1px;background:var(--border);flex-shrink:0;margin:2px 0}
+.sv-lbl{font-size:.59rem;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);margin-bottom:5px}
+.sv-val{font-family:'Cormorant Garamond',serif;font-size:1.18rem;font-weight:600;line-height:1.1}
+.sv-sub{font-size:.66rem;color:var(--muted);margin:3px 0 7px}
+.sv-track{height:5px;background:var(--border);border-radius:5px;overflow:hidden;margin-bottom:4px}
+.sv-fill{height:100%;border-radius:5px;background:linear-gradient(90deg,var(--sage),var(--mauve));transition:width .9s cubic-bezier(.4,0,.2,1)}
+
+/* Default fund cards */
+.fund-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:20px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+.fund-deco{position:absolute;top:-22px;right:-22px;width:90px;height:90px;border-radius:50%;opacity:.12}
+.fund-title{font-family:'Cormorant Garamond',serif;font-size:1rem;font-weight:600;margin-bottom:4px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.fund-desc{font-size:.69rem;color:var(--muted);line-height:1.55;margin-bottom:8px}
+.fund-hint{font-size:.69rem;font-weight:500;margin-bottom:11px;padding:5px 9px;border-radius:8px;background:var(--bg2);display:inline-block}
+.fund-nums{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
+.fund-saved{font-family:'Cormorant Garamond',serif;font-size:1.4rem;font-weight:600}
+.fund-tgt{font-size:.72rem;color:var(--muted)}
+.fund-bar{height:6px;background:var(--border);border-radius:6px;overflow:hidden;margin-bottom:12px}
+.fund-fill{height:100%;border-radius:6px;transition:width .9s cubic-bezier(.4,0,.2,1)}
+.fund-lock{font-size:.6rem;color:var(--muted);margin-top:9px;display:flex;align-items:center;gap:4px;justify-content:flex-end}
+
+/* Custom goals list (no scroll limit) */
+.goals-list-full{display:flex;flex-direction:column;gap:9px}
+.sec-label{font-size:.62rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);margin-bottom:10px;padding-left:2px}
+
 /* Budget */
 .budget-row{padding:9px 0;border-bottom:1px solid var(--border)}
 .budget-row:last-child{border-bottom:none}
@@ -347,6 +375,11 @@ header{display:flex;flex-direction:column;margin-bottom:20px}
   .pb-sep{display:none}
   .pb-col{min-width:0 !important;flex:none !important;padding:14px 18px !important;border-radius:13px !important;background:var(--bg2) !important;border:1px solid var(--border) !important;box-shadow:none !important;justify-content:flex-start}
   .pb-col:first-child{padding-left:18px !important}
+  /* Savings bar: same treatment */
+  .sv-bar{flex-direction:column;padding:0;background:transparent;border:none;box-shadow:none;border-radius:0;gap:10px}
+  .sv-sep{display:none}
+  .sv-col{min-width:0 !important;flex:none !important;padding:14px 18px !important;border-radius:13px !important;background:var(--bg2) !important;border:1px solid var(--border) !important;box-shadow:none !important;justify-content:flex-start}
+  .sv-col:first-child{padding-left:18px !important}
 }
 
 /* Health tooltip */
@@ -400,7 +433,8 @@ header{display:flex;flex-direction:column;margin-bottom:20px}
 <div class="tabs">
   <button class="tab-btn active" onclick="switchTab('overview')">📊 Přehled</button>
   <button class="tab-btn" onclick="switchTab('budget')">🗓 Plán</button>
-  <button class="tab-btn" onclick="switchTab('goals')">🎯 Cíle</button>
+  <button class="tab-btn" onclick="switchTab('goals')">🎯 Úspory</button>
+  <button class="tab-btn" onclick="switchTab('invest')">📈 Investice</button>
 </div>
 
 <!-- Health bar -->
@@ -549,16 +583,58 @@ header{display:flex;flex-direction:column;margin-bottom:20px}
 
 <!-- GOALS -->
 <div id="tab-goals" style="display:none">
-  <div class="mg">
-    <div class="panel">
-      <div class="ptitle">Finanční cíle <button class="add-btn" onclick="openGoalModal()">+ Přidat cíl</button></div>
-      <p style="font-size:.72rem;color:var(--muted);margin-bottom:11px;line-height:1.5">Vklady do cílů přidej přes <strong>+ Přidat → 🎯 Cíl</strong>. Progress se automaticky aktualizuje.</p>
-      <div class="goals-scroll" id="goalsList"><div class="empty"><strong>🎯</strong>Přidej svůj první finanční cíl!</div></div>
+  <!-- Summary bar -->
+  <div class="sv-bar">
+    <div class="sv-col">
+      <div class="sv-lbl">💰 Celkově naspořeno</div>
+      <div class="sv-val" id="svTotal" style="color:var(--mauve)">—</div>
+      <div class="sv-sub" id="svTotalSub"></div>
+      <div class="sv-track"><div class="sv-fill" id="svFill" style="width:0%"></div></div>
     </div>
-    <div class="panel">
-      <div class="ptitle">Investiční přehled</div>
-      <div class="bar-chart" id="investChart"><div class="empty"><strong>📈</strong>Žádné investice</div></div>
+    <div class="sv-sep"></div>
+    <div class="sv-col">
+      <div class="sv-lbl">📊 Průměrný postup</div>
+      <div class="sv-val" id="svAvg">—</div>
+      <div class="sv-sub" id="svAvgSub"></div>
     </div>
+    <div class="sv-sep"></div>
+    <div class="sv-col">
+      <div class="sv-lbl">✅ Aktivní / splněné</div>
+      <div class="sv-val" id="svCount">—</div>
+      <div class="sv-sub" id="svCountSub"></div>
+    </div>
+    <div class="sv-sep"></div>
+    <div class="sv-col">
+      <div class="sv-lbl">📅 Měsíčně potřeba</div>
+      <div class="sv-val" id="svMonthly">—</div>
+      <div class="sv-sub" id="svMonthlySub">do konce roku</div>
+    </div>
+  </div>
+
+  <!-- Default funds -->
+  <div style="margin-bottom:18px">
+    <div class="sec-label">🏦 Záchranné fondy</div>
+    <div class="mg2" id="defaultFunds" style="margin-bottom:0"></div>
+  </div>
+
+  <!-- Custom goals + insights -->
+  <div class="mg2" style="align-items:start">
+    <div class="panel">
+      <div class="ptitle">Vlastní cíle <button class="add-btn" onclick="openGoalModal()">+ Přidat cíl</button></div>
+      <p style="font-size:.72rem;color:var(--muted);margin-bottom:12px;line-height:1.5">Dovolená, nové auto, telefon… Vklady přidej přes <strong>+ Přidat → 🎯 Cíl</strong>.</p>
+      <div class="goals-list-full" id="goalsList"><div class="empty"><strong>🎯</strong>Zatím žádné vlastní cíle.</div></div>
+    </div>
+    <div class="panel" id="goalsInsights">
+      <div class="ptitle">Tipy & přehled</div>
+    </div>
+  </div>
+</div>
+
+<div id="tab-invest" style="display:none">
+  <div class="panel">
+    <div class="ptitle">Investiční přehled</div>
+    <p style="font-size:.72rem;color:var(--muted);margin-bottom:14px;line-height:1.5">Přehled všech transakcí označených jako <strong>📈 Investice</strong> v tomto měsíci. Až naplníš oba záchranné fondy — investuj pravidelně.</p>
+    <div class="bar-chart" id="investChart"><div class="empty"><strong>📈</strong>Žádné investice v tomto měsíci.</div></div>
   </div>
 </div>
 
@@ -605,9 +681,10 @@ header{display:flex;flex-direction:column;margin-bottom:20px}
 <div class="overlay" id="overlayGoal">
   <div class="modal-sm">
     <div class="mtitle" id="goalModalTitle">Nový <em>cíl</em></div>
-    <div class="fg"><label>Název cíle</label><input id="goalName" type="text" placeholder="Dovolená, Nové auto…"></div>
+    <div id="goalFundHint" style="display:none;font-size:.71rem;color:var(--text2);background:var(--bg2);border-radius:10px;padding:8px 11px;margin-bottom:12px;line-height:1.55"></div>
+    <div class="fg" id="goalNameFg"><label>Název cíle</label><input id="goalName" type="text" placeholder="Dovolená, Nové auto…"></div>
     <div style="display:flex;gap:10px">
-      <div class="fg" style="width:66px"><label>Emoji</label><input id="goalEmoji" type="text" maxlength="2" placeholder="🎯"></div>
+      <div class="fg" id="goalEmojiFg" style="width:66px"><label>Emoji</label><input id="goalEmoji" type="text" maxlength="2" placeholder="🎯"></div>
       <div class="fg" style="flex:1"><label>Cílová částka (Kč)</label><input id="goalTarget" type="number" placeholder="50000"></div>
     </div>
     <div class="fg"><label>Naspořeno (Kč)</label><input id="goalSaved" type="number" placeholder="0"></div>
@@ -813,7 +890,6 @@ if(!S.plans[k0]) S.plans[k0]={
 if(_isNew && !S.goals.length) S.goals=[
   {id:1,name:'Dovolená na Bali',emoji:'🌴',target:80000,saved:23000},
   {id:2,name:'Nový MacBook',    emoji:'💻',target:55000,saved:18000},
-  {id:3,name:'Emergency fund',  emoji:'🛡️',target:150000,saved:60000},
 ];
 for(let i=1;i<=5;i++){
   let m=cM-i,y=cY; if(m<0){m+=12;y--;}
@@ -830,6 +906,15 @@ function save(){ localStorage.setItem('bb8',JSON.stringify(S)); if(window.saveTo
 if(!S.catMeta)    S.catMeta={};
 if(!S.balances)   S.balances={};
 if(!S.ruleRatio)  S.ruleRatio={n:50,w:30,s:20};
+// Ensure the two default emergency funds always exist (cannot be deleted)
+(function ensureDefaultFunds(){
+  if(!S.goals) S.goals=[];
+  if(!S.goals.some(g=>g.fundType==='peace'))
+    S.goals.unshift({id:Date.now()-2,name:'Klid na duši',emoji:'🕊️',target:0,saved:0,isDefault:true,fundType:'peace'});
+  if(!S.goals.some(g=>g.fundType==='reserve'))
+    S.goals.splice(S.goals.findIndex(g=>g.fundType==='peace')+1,0,{id:Date.now()-1,name:'Rezerva',emoji:'🛡️',target:0,saved:0,isDefault:true,fundType:'reserve'});
+  save();
+})();
 // Default type for every expense category ('need' = nezbytný, 'want' = radost)
 const DEF_META={
   'Bydlení 🏠':'need','Jídlo 🍔':'need','Doprava 🚗':'need','Zdraví 💊':'need',
@@ -910,11 +995,11 @@ function changeMonth(d){
 }
 function switchTab(t){
   activeTab=t;
-  ['overview','budget','goals'].forEach(id=>{
+  ['overview','budget','goals','invest'].forEach(id=>{
     document.getElementById('tab-'+id).style.display=id===t?'':'none';
   });
   document.querySelectorAll('.tab-btn').forEach((b,i)=>{
-    b.classList.toggle('active',['overview','budget','goals'][i]===t);
+    b.classList.toggle('active',['overview','budget','goals','invest'][i]===t);
   });
   // Health bar + summary cards only on overview tab
   const hb=document.querySelector('.health-bar');
@@ -1012,11 +1097,20 @@ function openGoalModal(){
 function openEditGoalModal(id){
   const g=S.goals.find(g=>g.id===id); if(!g)return;
   editGoalId=id;
-  document.getElementById('goalModalTitle').innerHTML='Upravit <em>cíl</em>';
+  const isDF=g.isDefault;
+  document.getElementById('goalModalTitle').innerHTML=isDF?'Upravit <em>fond</em>':'Upravit <em>cíl</em>';
   document.getElementById('goalName').value=g.name;
   document.getElementById('goalEmoji').value=g.emoji;
-  document.getElementById('goalTarget').value=g.target;
-  document.getElementById('goalSaved').value=g.saved;
+  document.getElementById('goalTarget').value=g.target||'';
+  document.getElementById('goalSaved').value=g.saved||'';
+  document.getElementById('goalNameFg').style.display=isDF?'none':'';
+  document.getElementById('goalEmojiFg').style.display=isDF?'none':'';
+  const hint=document.getElementById('goalFundHint');
+  if(isDF&&hint){
+    hint.style.display='';
+    if(g.fundType==='peace') hint.innerHTML='🕊️ <strong>Klid na duši</strong> — nastav cíl na výši jednoho měsíčního příjmu. Slouží na nečekané výdaje (opravy, zdraví). Lze z něj čerpat.';
+    else hint.innerHTML='🛡️ <strong>Rezerva</strong> — nastav cíl na 3–6× měsíčních výdajů. Na tento fond se nesahá. Chrání tě při ztrátě příjmu.';
+  } else if(hint){ hint.style.display='none'; }
   document.getElementById('overlayGoal').classList.add('open');
 }
 function saveGoal(){
@@ -1024,9 +1118,20 @@ function saveGoal(){
   const target=parseFloat(document.getElementById('goalTarget').value);
   const saved=parseFloat(document.getElementById('goalSaved').value)||0;
   const emoji=document.getElementById('goalEmoji').value||'🎯';
-  if(!name||!target){toast('Vyplň název a cíl','warn');return;}
-  if(editGoalId){ const g=S.goals.find(g=>g.id===editGoalId); if(g){g.name=name;g.emoji=emoji;g.target=target;g.saved=saved;} toast('Cíl upraven ✓','success'); }
-  else { S.goals.push({id:Date.now(),name,emoji,target,saved}); toast(emoji+' '+name+' přidán!','success'); }
+  const g=editGoalId?S.goals.find(g=>g.id===editGoalId):null;
+  const isDF=g&&g.isDefault;
+  if(!isDF&&(!name||!target)){toast('Vyplň název a cíl','warn');return;}
+  if(isDF&&!target){toast('Zadej cílovou částku','warn');return;}
+  if(editGoalId){
+    if(g){
+      if(!isDF){g.name=name;g.emoji=emoji;}  // don't overwrite name/emoji for default funds
+      g.target=target; g.saved=saved;
+    }
+    toast(isDF?g.emoji+' '+g.name+' upraven ✓':'Cíl upraven ✓','success');
+  } else {
+    S.goals.push({id:Date.now(),name,emoji,target,saved});
+    toast(emoji+' '+name+' přidán!','success');
+  }
   save(); close2('overlayGoal'); render();
 }
 function openAddGoalModal(id){
@@ -1043,7 +1148,12 @@ function confirmAddGoal(){
   if(g){g.saved=Math.min(g.target,g.saved+amt);toast(fmt(amt)+' přidáno ✓','success');}
   save(); close2('overlayAddGoal'); render();
 }
-function deleteGoal(id){ S.goals=S.goals.filter(g=>g.id!==id); save(); toast('Cíl smazán'); render(); }
+function deleteGoal(id){
+  const g=S.goals.find(g=>g.id===id);
+  if(g&&g.isDefault){toast('Záchranné fondy nelze smazat 🔒','warn');return;}
+  if(!confirm('Opravdu smazat tento cíl?'))return;
+  S.goals=S.goals.filter(g=>g.id!==id); save(); toast('Cíl smazán'); render();
+}
 
 function openPlanModal(){
   const plan=curPlan();
@@ -1255,7 +1365,8 @@ function render(){
 
   if(activeTab==='overview'){ renderTxList(); renderGoalsMini(); renderInsights(t,income,expense,invest,rate); renderSavingsInsight(rate,income); renderSavingsTrend(); renderDonut('donutSvg2','donutLegend2',expense,t.filter(x=>x.type==='expense')); }
   if(activeTab==='budget')   renderBudget(t);
-  if(activeTab==='goals')    { renderGoalsList(t); renderInvest(t); }
+  if(activeTab==='goals')    { renderSavingsBar(); renderDefaultFunds(); renderGoalsList(t); renderGoalsInsights(); }
+  if(activeTab==='invest')   renderInvest(t);
 }
 
 function renderTxList(){
@@ -1311,8 +1422,8 @@ function renderSavingsTrend(){
 function renderGoalsMini(){
   const el=document.getElementById('goalsMini');
   if(!S.goals.length){el.innerHTML='<div class="empty"><strong>🎯</strong>Žádné cíle.<br>Klikni a přidej svůj první!</div>';return;}
-  const cards=S.goals.map(g=>{
-    const pct=Math.min(100,Math.round((g.saved/g.target)*100));
+  const cards=S.goals.filter(g=>g.target>0).map(g=>{
+    const pct=Math.min(100,Math.round(((g.saved||0)/g.target)*100));
     const bc=pct>=100?'var(--sage)':pct>=75?'var(--gold)':'var(--rose-mid)';
     return '<div class="goal-mini" onclick="openAddGoalModal('+g.id+')">'+
       '<div style="font-size:1.15rem">'+g.emoji+'</div>'+
@@ -1326,7 +1437,7 @@ function renderGoalsMini(){
 }
 
 function goalCard(g){
-  const pct=Math.min(100,Math.round((g.saved/g.target)*100));
+  const pct=g.target?Math.min(100,Math.round(((g.saved||0)/g.target)*100)):0;
   const bc=pct>=100?'background:var(--sage)':pct>=75?'background:var(--gold)':'';
   return '<div class="goal-card">'+
     '<div class="goal-top"><span class="goal-emoji">'+g.emoji+'</span><span class="goal-gname">'+g.name+'</span>'+
@@ -1341,8 +1452,9 @@ function goalCard(g){
 }
 function renderGoalsList(t){
   const el=document.getElementById('goalsList');
-  if(!S.goals.length){el.innerHTML='<div class="empty"><strong>🎯</strong>Přidej svůj první finanční cíl!</div>';return;}
-  el.innerHTML=S.goals.map(g=>{
+  const custom=(S.goals||[]).filter(g=>!g.isDefault);
+  if(!custom.length){el.innerHTML='<div class="empty"><strong>🎯</strong>Zatím žádné vlastní cíle.<br>Klikni + Přidat cíl!</div>';return;}
+  el.innerHTML=custom.map(g=>{
     const linked=(t||[]).filter(x=>x.goalId===g.id);
     const lh=linked.length?'<div style="margin-top:7px;display:flex;flex-direction:column;gap:4px">'+
       linked.map(x=>'<div style="display:flex;align-items:center;gap:8px;font-size:.69rem;color:var(--text2);background:var(--bg);border-radius:8px;padding:5px 9px">'+
@@ -1654,12 +1766,124 @@ function render5030(inc,lim,incA,expTxs,invA){
 
 function renderInvest(t){
   const el=document.getElementById('investChart');
+  if(!el)return;
   const inv=t.filter(x=>x.type==='investment');
-  if(!inv.length){el.innerHTML='<div class="empty"><strong>📈</strong>Žádné investice ani vklady do cílů.</div>';return;}
+  if(!inv.length){el.innerHTML='<div class="empty"><strong>📈</strong>Žádné investice v tomto měsíci.</div>';return;}
   const gT=inv.filter(x=>x.goalId).reduce((s,x)=>s+x.amount,0);
   const items=[...cmap(inv.filter(x=>!x.goalId)).map(([cat,val])=>({label:cname(cat),val,col:'var(--gold)',icon:icon(cat)})),...(gT>0?[{label:'Vklady do cílů',val:gT,col:'var(--mauve)',icon:'🎯'}]:[])].sort((a,b)=>b.val-a.val);
   const max=items[0]?.val||1;
   el.innerHTML=items.map(item=>'<div class="bc-row"><div class="bc-label">'+item.icon+' '+item.label+'</div><div class="bc-bars"><div class="bc-bar-wrap"><div class="bc-bar" style="width:'+Math.round((item.val/max)*100)+'%;background:'+item.col+'"></div></div></div><div class="bc-val">'+fmt(item.val)+'</div></div>').join('');
+}
+
+function renderSavingsBar(){
+  const all=S.goals||[];
+  const totalSaved=all.reduce((s,g)=>s+(g.saved||0),0);
+  const totalTarget=all.reduce((s,g)=>s+(g.target||0),0);
+  const pct=totalTarget?Math.min(100,Math.round(totalSaved/totalTarget*100)):0;
+  const withTarget=all.filter(g=>g.target>0);
+  const avgPct=withTarget.length?Math.round(withTarget.reduce((s,g)=>s+Math.min(100,g.saved/g.target*100),0)/withTarget.length):0;
+  const done=all.filter(g=>g.target>0&&g.saved>=g.target).length;
+  const active=all.filter(g=>g.target>0&&g.saved<g.target).length;
+  const now2=new Date();
+  const daysInMonth=new Date(now2.getFullYear(),now2.getMonth()+1,0).getDate();
+  const monthsLeft=Math.max(0.5,(11-now2.getMonth())+(1-now2.getDate()/daysInMonth));
+  const totalRemaining=all.reduce((s,g)=>s+Math.max(0,(g.target||0)-(g.saved||0)),0);
+  const monthlyNeeded=totalRemaining>0?Math.round(totalRemaining/monthsLeft):0;
+  document.getElementById('svTotal').textContent=fmt(totalSaved);
+  document.getElementById('svTotalSub').textContent=totalTarget?'z '+fmt(totalTarget)+' celkem':'nastav cíle';
+  document.getElementById('svFill').style.width=pct+'%';
+  document.getElementById('svAvg').textContent=withTarget.length?avgPct+'%':'—';
+  document.getElementById('svAvgSub').textContent=withTarget.length?'průměr přes '+withTarget.length+' cílů':'';
+  document.getElementById('svCount').textContent=active+' / '+done;
+  document.getElementById('svCountSub').textContent=(active?active+' aktivní':'')+(done?' · '+done+' splněno 🎉':'');
+  document.getElementById('svMonthly').textContent=totalRemaining>0?fmt(monthlyNeeded):'🎉 Splněno!';
+  document.getElementById('svMonthlySub').textContent='do konce roku ('+Math.round(monthsLeft*10)/10+' měs.)';
+}
+
+function renderDefaultFunds(){
+  const el=document.getElementById('defaultFunds');
+  if(!el)return;
+  const peace=S.goals.find(g=>g.fundType==='peace');
+  const reserve=S.goals.find(g=>g.fundType==='reserve');
+  const t=txs();
+  const income=t.filter(x=>x.type==='income').reduce((s,x)=>s+x.amount,0);
+  const planInc=Object.values(curIncome()).reduce((s,v)=>s+v,0);
+  const refIncome=planInc||income;
+  const expense=t.filter(x=>x.type==='expense').reduce((s,x)=>s+x.amount,0);
+  const planExp=Object.values(curLimits()).reduce((s,v)=>s+v,0);
+  const refExp=planExp||expense;
+  function fCard(g,col,desc,hint){
+    if(!g)return '';
+    const pct=g.target?Math.min(100,Math.round((g.saved||0)/g.target*100)):0;
+    const done=g.target&&(g.saved||0)>=g.target;
+    const noTarget=!g.target;
+    return '<div class="fund-card">'+
+      '<div class="fund-deco" style="background:'+col+'"></div>'+
+      '<div class="fund-title">'+g.emoji+' '+g.name+
+        (done?'<span style="font-size:.63rem;background:var(--sage-light);color:var(--sage);padding:2px 8px;border-radius:20px;font-family:Jost,sans-serif;font-weight:600">✓ Splněno</span>':'')+
+      '</div>'+
+      '<div class="fund-desc">'+desc+'</div>'+
+      (hint?'<div class="fund-hint" style="color:'+col+'">💡 '+hint+'</div>':'')+
+      (noTarget?'<div style="font-size:.76rem;color:var(--muted);margin-bottom:12px;font-style:italic">Cíl není nastaven — klikni Upravit</div>':
+        '<div class="fund-nums"><span class="fund-saved" style="color:'+col+'">'+(fmt(g.saved||0))+'</span><span class="fund-tgt">cíl: '+fmt(g.target)+'</span></div>'+
+        '<div class="fund-bar"><div class="fund-fill" style="width:'+pct+'%;background:'+col+'"></div></div>')+
+      '<div style="display:flex;gap:6px">'+
+        '<button class="gbtn" onclick="openAddGoalModal('+g.id+')">💸 Přidat</button>'+
+        '<button class="gbtn" onclick="openEditGoalModal('+g.id+')">✏️ Upravit cíl</button>'+
+      '</div>'+
+      '<div class="fund-lock">🔒 Záchranný fond · nelze smazat</div>'+
+    '</div>';
+  }
+  const peaceHint=refIncome?'Doporučeno: '+fmt(refIncome)+' = 1× měsíční příjem':'Nastav = 1× tvůj měsíční příjem';
+  const reserveHint=refExp?'Doporučeno: '+fmt(refExp*3)+' – '+fmt(refExp*6)+' (3–6× výdaje)':'Nastav = 3–6× tvoje měsíční výdaje';
+  el.innerHTML=
+    fCard(peace,'var(--sage)','Okamžitá záloha — rozbité spotřebiče, neplánované výdaje. Tento fond je k čerpání.',peaceHint)+
+    fCard(reserve,'var(--mauve)','Pevná rezerva — přežití 3–6 měsíců bez příjmu. Nesahat, pokud to není opravdu nutné.',reserveHint);
+}
+
+function renderGoalsInsights(){
+  const el=document.getElementById('goalsInsights');
+  if(!el)return;
+  let h='<div class="ptitle">Tipy & přehled</div>';
+  const peace=S.goals.find(g=>g.fundType==='peace');
+  const reserve=S.goals.find(g=>g.fundType==='reserve');
+  const custom=(S.goals||[]).filter(g=>!g.isDefault&&g.target>0);
+  const peaceDone=peace&&peace.target>0&&(peace.saved||0)>=peace.target;
+  const reserveDone=reserve&&reserve.target>0&&(reserve.saved||0)>=reserve.target;
+  // Priority advice
+  if(!peace||!peace.target){
+    h+='<div class="insight info"><span class="insight-icon">🕊️</span>Nastav cíl pro <strong>Klid na duši</strong> — rovná se 1× tvůj měsíční příjem. Je to první krok.</div>';
+  } else if(!peaceDone){
+    const need=peace.target-(peace.saved||0);
+    h+='<div class="insight info"><span class="insight-icon">🕊️</span>Priorita: naplnit <strong>Klid na duši</strong>. Chybí <strong>'+fmt(need)+'</strong>. Pak teprve Rezerva a investice.</div>';
+  } else if(!reserve||!reserve.target){
+    h+='<div class="insight good"><span class="insight-icon">✅</span><strong>Klid na duši splněn!</strong> Dalším krokem je nastavit cíl pro <strong>Rezervu</strong> (3–6× výdaje).</div>';
+  } else if(!reserveDone){
+    const need=reserve.target-(reserve.saved||0);
+    h+='<div class="insight info"><span class="insight-icon">🛡️</span>Klid na duši OK! Teď buduj <strong>Rezervu</strong>. Chybí <strong>'+fmt(need)+'</strong>.</div>';
+  } else {
+    h+='<div class="insight good"><span class="insight-icon">🚀</span>Oba záchranné fondy splněny! Teď je čas začít <strong>pravidelně investovat</strong>.</div>';
+  }
+  // Custom goal insights
+  if(custom.length){
+    const closest=custom.filter(g=>g.saved<g.target).sort((a,b)=>(b.saved/b.target)-(a.saved/a.target))[0];
+    if(closest){
+      const pct=Math.round((closest.saved||0)/closest.target*100);
+      h+='<div class="insight warn"><span class="insight-icon">🎯</span>Nejblíže splnění: <strong>'+closest.emoji+' '+closest.name+'</strong> — '+pct+' % (chybí '+fmt(closest.target-(closest.saved||0))+')</div>';
+    }
+    const now2=new Date();
+    const daysInMonth=new Date(now2.getFullYear(),now2.getMonth()+1,0).getDate();
+    const monthsLeft=Math.max(0.5,(11-now2.getMonth())+(1-now2.getDate()/daysInMonth));
+    const remaining=custom.reduce((s,g)=>s+Math.max(0,g.target-(g.saved||0)),0);
+    if(remaining>0){
+      h+='<div class="insight warn"><span class="insight-icon">📅</span>Pro splnění vlastních cílů do konce roku: <strong>'+fmt(Math.round(remaining/monthsLeft))+' / měs.</strong></div>';
+    }
+    const doneCust=custom.filter(g=>(g.saved||0)>=g.target);
+    if(doneCust.length) h+='<div class="insight good"><span class="insight-icon">🎉</span>'+doneCust.map(g=>g.emoji+' '+g.name).join(', ')+' — '+( doneCust.length===1?'cíl splněn':'cíle splněny')+'!</div>';
+  } else {
+    h+='<div class="insight info" style="margin-top:8px"><span class="insight-icon">💡</span>Přidej vlastní cíle (dovolená, nové auto…). Uvidíš, kolik měsíčně potřebuješ odkládat.</div>';
+  }
+  el.innerHTML=h;
 }
 
 render();
