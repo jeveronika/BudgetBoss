@@ -1090,12 +1090,13 @@ function copyPrevPlan(){
   toast('Hodnoty zkopírovány ✓','success');
 }
 function clearMonthData(){
-  const k=ck();
-  const count=(S.data[k]||[]).length;
-  if(!count){toast('Tento měsíc nemá žádné transakce','warn');return;}
-  if(!confirm(`Opravdu smazat všech ${count} transakcí za ${MONTHS[cM]} ${cY}? Tato akce je nevratná.`))return;
-  S.data[k]=[];
-  save(); close2('overlayPlan'); toast(`Smazáno ${count} transakcí ✓`,'success'); render();
+  const inputs=document.querySelectorAll('#planRows input[data-pt]');
+  if(!inputs.length){toast('Žádné položky k vymazání','warn');return;}
+  const hasAny=[...inputs].some(i=>i.value&&parseFloat(i.value)>0);
+  if(!hasAny){toast('Plán je již prázdný','warn');return;}
+  if(!confirm(`Opravdu vymazat celý plán pro ${MONTHS[cM]} ${cY}?`))return;
+  inputs.forEach(inp=>{ inp.value=''; });
+  toast('Všechny hodnoty vymazány — klikni Uložit plán pro potvrzení','success');
 }
 
 let cmTabType='expense';
