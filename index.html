@@ -509,10 +509,10 @@ header{display:flex;flex-direction:column;margin-bottom:20px}
     </div>
     <div class="pb-sep"></div>
     <div class="pb-col">
-      <div class="pb-lbl">💰 Plánované spoření</div>
-      <div class="pb-val" id="pbSavVal" style="color:var(--mauve)">—</div>
+      <div class="pb-lbl">↕️ Zbývá k rozdělení</div>
+      <div class="pb-val" id="pbSavVal">—</div>
       <div class="pb-sub" id="pbSavSub"></div>
-      <div class="pb-track"><div class="pb-fill" id="pbSavFill" style="width:0%;background:var(--mauve)"></div></div>
+      <div class="pb-track"><div class="pb-fill" id="pbSavFill" style="width:0%"></div></div>
       <div class="pb-note" id="pbSavNote"></div>
     </div>
     <div class="pb-sep"></div>
@@ -1439,22 +1439,36 @@ function renderPlanBar(t){
     else{expNote.textContent=fmt(totalExpPlan-actualExp)+' zbývá z limitů';expNote.style.color='var(--muted)';}
   } else { expNote.textContent=''; }
 
-  // ── Column 3: Plánované spoření ──
-  document.getElementById('pbSavVal').textContent=totalIncPlan>0?fmt(Math.max(0,planSavings)):'—';
-  document.getElementById('pbSavVal').style.color=planSavings>0?'var(--mauve)':planSavings<0?'var(--rose)':'var(--muted)';
-  document.getElementById('pbSavSub').textContent=totalIncPlan>0?'Skutečně: '+fmt(actualNet)+(actualNet>planSavings&&planSavings>0?' · 🎉 nad plán':''):'Nastav příjmy a výdaje';
-  const savPct=planSavings>0?Math.min(100,Math.round(Math.max(0,actualNet)/planSavings*100)):0;
+  // ── Column 3: Zbývá k rozdělení ──
+  // = plánovaný příjem − součet výdajových limitů (co ještě nemá v plánu přiřazenou kategorii)
+  const allocPct=totalIncPlan>0?Math.min(120,Math.round(totalExpPlan/totalIncPlan*100)):0;
+  const savVal=document.getElementById('pbSavVal');
   const savFill=document.getElementById('pbSavFill');
-  savFill.style.width=savPct+'%';
-  savFill.style.background=actualNet>=planSavings&&planSavings>0?'var(--sage)':'var(--mauve)';
   const savNote=document.getElementById('pbSavNote');
-  if(totalIncPlan>0){
-    if(planSavings<0){savNote.textContent='⚠️ Plán nemá rezervu na spoření';savNote.style.color='var(--rose)';}
-    else if(planSavings===0){savNote.textContent='Plán přesně vyrovnaný — bez rezervy';savNote.style.color='var(--muted)';}
-    else if(actualNet>=planSavings){savNote.textContent='✓ Spoření splněno nebo nad plán';savNote.style.color='var(--sage)';}
-    else if(actualNet<0){savNote.textContent='⚠️ Tento měsíc v deficitu';savNote.style.color='var(--rose)';}
-    else{savNote.textContent=savPct+'% cílového spoření dosaženo';savNote.style.color='var(--muted)';}
-  } else { savNote.textContent=''; }
+  if(!totalIncPlan){
+    savVal.textContent='—'; savVal.style.color='var(--muted)';
+    document.getElementById('pbSavSub').textContent='Nastav příjmový plán výše';
+    savFill.style.cssText='width:0%';
+    savNote.textContent='';
+  } else if(planSavings<0){
+    // Výdajové limity přesahují příjmový plán
+    savVal.textContent='−'+fmt(Math.abs(planSavings)); savVal.style.color='var(--rose)';
+    document.getElementById('pbSavSub').textContent='Limity výdajů o '+fmt(Math.abs(planSavings))+' nad příjmem';
+    savFill.style.cssText='width:100%;background:var(--rose)';
+    savNote.textContent='⚠️ Zkraťte limity nebo navyšte příjmový plán'; savNote.style.color='var(--rose)';
+  } else if(planSavings===0){
+    savVal.textContent=fmt(0); savVal.style.color='var(--muted)';
+    document.getElementById('pbSavSub').textContent='Vše alokováno do výdajových kategorií';
+    savFill.style.cssText='width:100%;background:var(--sage)';
+    savNote.textContent='✓ Plán plně rozdělený — bez rezervy'; savNote.style.color='var(--muted)';
+  } else {
+    savVal.textContent=fmt(planSavings); savVal.style.color='var(--mauve)';
+    document.getElementById('pbSavSub').textContent='Alokováno: '+allocPct+' % příjmového plánu';
+    savFill.style.cssText='width:'+allocPct+'%;background:var(--sage)';
+    const suggestion=planSavings>totalIncPlan*0.3?'💡 Přidej investice nebo cíle do výdajového plánu':planSavings>totalIncPlan*0.1?'💡 Zvaž přidat investice nebo spoření':'✓ Dobře rozdělený plán';
+    const suggCol=planSavings>totalIncPlan*0.1?'var(--muted)':'var(--sage)';
+    savNote.textContent=suggestion; savNote.style.color=suggCol;
+  }
 
   // ── Panel 4: Plánovaná míra spoření (plan health) ──
   const savingsRate=totalIncPlan>0?Math.round(Math.max(0,planSavings)/totalIncPlan*100):0;
