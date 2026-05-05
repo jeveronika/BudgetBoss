@@ -393,6 +393,23 @@ input[type=date]{-webkit-appearance:none;appearance:none}
   .sv-col:first-child{padding-left:18px !important}
 }
 
+/* Investment tab – portfolio cards */
+.pf-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;box-shadow:var(--shadow);transition:box-shadow .15s,border-color .15s}
+.pf-card:hover{border-color:var(--border2);box-shadow:var(--shadow-h)}
+.pf-card:hover .pf-acts{opacity:1}
+.pf-header{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:11px}
+.pf-name{font-family:'Cormorant Garamond',serif;font-size:1.02rem;font-weight:600;line-height:1.3}
+.pf-sparkline{flex-shrink:0}
+.pf-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:10px}
+.pf-metric{background:var(--bg2);border-radius:10px;padding:8px 10px}
+.pf-m-lbl{font-size:.57rem;text-transform:uppercase;letter-spacing:.9px;color:var(--muted);margin-bottom:3px}
+.pf-m-val{font-family:'Cormorant Garamond',serif;font-size:.92rem;font-weight:600}
+.pf-prog{height:4px;background:var(--border);border-radius:4px;overflow:hidden;margin-bottom:7px}
+.pf-prog-fill{height:100%;border-radius:4px;transition:width .9s cubic-bezier(.4,0,.2,1)}
+.pf-date{font-size:.61rem;color:var(--muted);margin-bottom:9px}
+.pf-acts{display:flex;gap:5px;opacity:0;transition:opacity .15s}
+.pf-acts .gbtn{flex:1}
+
 /* Health tooltip */
 .hs-info-btn{font-size:.8rem;color:var(--muted);cursor:pointer;transition:color .2s;user-select:none;line-height:1}
 .hs-info-btn:hover{color:var(--rose)}
@@ -643,9 +660,45 @@ input[type=date]{-webkit-appearance:none;appearance:none}
 </div>
 
 <div id="tab-invest" style="display:none">
+  <!-- Summary bar -->
+  <div class="sv-bar">
+    <div class="sv-col">
+      <div class="sv-lbl">💰 Celkem vloženo</div>
+      <div class="sv-val" id="ivInvested" style="color:var(--gold)">—</div>
+      <div class="sv-sub" id="ivInvestedSub"></div>
+    </div>
+    <div class="sv-sep"></div>
+    <div class="sv-col">
+      <div class="sv-lbl">📊 Aktuální hodnota</div>
+      <div class="sv-val" id="ivValue">—</div>
+      <div class="sv-sub" id="ivValueSub"></div>
+      <div class="sv-track"><div class="sv-fill" id="ivFill" style="width:0%"></div></div>
+    </div>
+    <div class="sv-sep"></div>
+    <div class="sv-col">
+      <div class="sv-lbl">🏆 Celkový výnos</div>
+      <div class="sv-val" id="ivGain">—</div>
+      <div class="sv-sub" id="ivGainSub"></div>
+    </div>
+    <div class="sv-sep"></div>
+    <div class="sv-col">
+      <div class="sv-lbl">📅 Tento měsíc</div>
+      <div class="sv-val" id="ivMonth" style="color:var(--gold)">—</div>
+      <div class="sv-sub" id="ivMonthSub"></div>
+    </div>
+  </div>
+
+  <!-- Portfolio list -->
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+    <div class="sec-label" style="margin:0">📂 Moje portfolia</div>
+    <button class="add-btn" onclick="openPortfolioModal()">+ Přidat portfolio</button>
+  </div>
+  <div class="mg2" id="portfolioGrid" style="margin-bottom:18px"></div>
+
+  <!-- Monthly investment transactions -->
   <div class="panel">
-    <div class="ptitle">Investiční přehled</div>
-    <p style="font-size:.72rem;color:var(--muted);margin-bottom:14px;line-height:1.5">Přehled všech transakcí označených jako <strong>📈 Investice</strong> v tomto měsíci. Až naplníš oba záchranné fondy — investuj pravidelně.</p>
+    <div class="ptitle">Investice tento měsíc</div>
+    <p style="font-size:.72rem;color:var(--muted);margin-bottom:14px;line-height:1.5">Přehled transakcí označených jako <strong>📈 Investice</strong>. Až naplníš oba záchranné fondy — investuj pravidelně.</p>
     <div class="bar-chart" id="investChart"><div class="empty"><strong>📈</strong>Žádné investice v tomto měsíci.</div></div>
   </div>
 </div>
@@ -780,6 +833,41 @@ input[type=date]{-webkit-appearance:none;appearance:none}
   </div>
 </div>
 
+<!-- PORTFOLIO modal -->
+<div class="overlay" id="overlayPortfolio">
+  <div class="modal-sm">
+    <div class="mtitle" id="pfModalTitle">Nové <em>portfolio</em></div>
+    <div style="display:flex;gap:10px">
+      <div class="fg" style="width:66px;flex-shrink:0"><label>Emoji</label><input id="pfEmoji" type="text" maxlength="2" placeholder="📈"></div>
+      <div class="fg" style="flex:1"><label>Název portfolia</label><input id="pfName" type="text" placeholder="ETF, Akcie, Krypto…"></div>
+    </div>
+    <div class="fg"><label>Celkem vloženo — pořizovací cena</label><input id="pfInvested" type="number" placeholder="0" min="0" step="1"></div>
+    <div class="fg"><label>Poznámka (nepovinné)</label><input id="pfNote" type="text" placeholder="např. Vanguard FTSE All-World…"></div>
+    <p style="font-size:.67rem;color:var(--muted);line-height:1.55;margin-bottom:14px">Výnos = aktuální hodnota − vloženo. Hodnotu aktualizuješ tlačítkem <strong>📊 Přidat hodnotu</strong> na kartě portfolia.</p>
+    <div class="mactions">
+      <button class="mbtn-cancel" onclick="close2('overlayPortfolio')">Zrušit</button>
+      <button class="mbtn-ok" onclick="savePortfolio()">Uložit</button>
+    </div>
+  </div>
+</div>
+
+<!-- SNAPSHOT modal -->
+<div class="overlay" id="overlaySnapshot">
+  <div class="modal-sm">
+    <div class="mtitle">Aktuální <em>hodnota</em></div>
+    <div id="snapPortfolioName" style="font-size:.82rem;color:var(--text2);background:var(--bg2);border-radius:10px;padding:8px 12px;margin-bottom:14px;font-weight:500"></div>
+    <div class="form-row">
+      <div class="fg"><label>Aktuální hodnota</label><input id="snapValue" type="number" placeholder="0" min="0" step="1"></div>
+      <div class="fg"><label>Datum</label><input id="snapDate" type="date"></div>
+    </div>
+    <div class="fg"><label>Poznámka (nepovinné)</label><input id="snapNote" type="text" placeholder="např. po dividendě, výběru…"></div>
+    <div class="mactions">
+      <button class="mbtn-cancel" onclick="close2('overlaySnapshot')">Zrušit</button>
+      <button class="mbtn-ok" onclick="saveSnapshot()">Uložit hodnotu</button>
+    </div>
+  </div>
+</div>
+
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
@@ -828,14 +916,15 @@ input[type=date]{-webkit-appearance:none;appearance:none}
         if (snap.exists()) {
           const cs = snap.data().state;
           // Explicitní nahrazení každého pole (Object.assign nepokryje prázdná pole)
-          if (cs.cc)                   window.S.cc      = cs.cc;
-          if (cs.data)                 window.S.data    = cs.data;
-          if (Array.isArray(cs.goals)) window.S.goals   = cs.goals;
-          if (cs.plans)                window.S.plans   = cs.plans;
-          if (cs.catMeta)              window.S.catMeta   = cs.catMeta;
-          if (cs.balances)             window.S.balances  = cs.balances;
-          if (cs.ruleRatio)            window.S.ruleRatio = cs.ruleRatio;
-          if (cs.currency)            window.S.currency  = cs.currency;
+          if (cs.cc)                        window.S.cc         = cs.cc;
+          if (cs.data)                      window.S.data       = cs.data;
+          if (Array.isArray(cs.goals))      window.S.goals      = cs.goals;
+          if (cs.plans)                     window.S.plans      = cs.plans;
+          if (cs.catMeta)                   window.S.catMeta    = cs.catMeta;
+          if (cs.balances)                  window.S.balances   = cs.balances;
+          if (cs.ruleRatio)                 window.S.ruleRatio  = cs.ruleRatio;
+          if (cs.currency)                  window.S.currency   = cs.currency;
+          if (Array.isArray(cs.portfolios)) window.S.portfolios = cs.portfolios;
           // Synchronizuj localStorage s daty z cloudu
           localStorage.setItem('bb8', JSON.stringify(window.S));
           window.ensureDefaultFunds();  // re-add default funds if cloud data wiped them
@@ -923,6 +1012,7 @@ if(!S.catMeta)    S.catMeta={};
 if(!S.balances)   S.balances={};
 if(!S.ruleRatio)  S.ruleRatio={n:50,w:30,s:20};
 if(!S.currency)   S.currency='CZK';
+if(!S.portfolios) S.portfolios=[];
 // Ensure the two default emergency funds always exist (cannot be deleted)
 function ensureDefaultFunds(){
   if(!S.goals) S.goals=[];
@@ -1373,6 +1463,183 @@ function saveEditTx(){
   save(); close2('overlayEditTx'); toast('Upraveno ✓','success'); render();
 }
 
+// ── PORTFOLIOS ──
+let editPortfolioId=null, addSnapshotPortfolioId=null;
+
+function latestSnapshot(p){
+  if(!p.snapshots||!p.snapshots.length) return null;
+  const sorted=[...p.snapshots].sort((a,b)=>a.date<b.date?-1:1);
+  return sorted[sorted.length-1];
+}
+
+function drawSparkline(snapshots,w,h){
+  w=w||110; h=h||36;
+  const sorted=[...snapshots].sort((a,b)=>a.date<b.date?-1:1);
+  if(sorted.length<2) return '<div style="width:'+w+'px;height:'+h+'px;display:flex;align-items:center;justify-content:center;font-size:.63rem;color:var(--muted)">+snímek</div>';
+  const vals=sorted.map(s=>s.value);
+  const mn=Math.min(...vals),mx=Math.max(...vals),rng=mx-mn||1;
+  const xStep=w/(vals.length-1);
+  const pts=vals.map((v,i)=>{const x=i*xStep,y=h-((v-mn)/rng)*(h-6)-3;return x.toFixed(1)+','+y.toFixed(1);}).join(' ');
+  const trend=vals[vals.length-1]>=vals[0];
+  const col=trend?'var(--sage)':'var(--rose)';
+  const lx=((vals.length-1)*xStep).toFixed(1);
+  const ly=(h-((vals[vals.length-1]-mn)/rng)*(h-6)-3).toFixed(1);
+  const fillCol=trend?'rgba(138,170,142,.15)':'rgba(212,128,122,.1)';
+  const areapts='0,'+(h+2)+' '+pts+' '+lx+','+(h+2);
+  return '<svg width="'+w+'" height="'+h+'" viewBox="0 0 '+w+' '+h+'" style="overflow:visible;display:block">'+
+    '<polygon points="'+areapts+'" fill="'+fillCol+'"/>'+
+    '<polyline points="'+pts+'" fill="none" stroke="'+col+'" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>'+
+    '<circle cx="'+lx+'" cy="'+ly+'" r="2.5" fill="'+col+'"/>'+
+    '</svg>';
+}
+
+function openPortfolioModal(id){
+  editPortfolioId=id||null;
+  const p=id?(S.portfolios||[]).find(p=>p.id===id):null;
+  document.getElementById('pfModalTitle').innerHTML=p?'Upravit <em>portfolio</em>':'Nové <em>portfolio</em>';
+  document.getElementById('pfName').value=p?p.name:'';
+  document.getElementById('pfEmoji').value=p?(p.emoji||'📈'):'📈';
+  document.getElementById('pfInvested').value=p&&p.invested?p.invested:'';
+  document.getElementById('pfNote').value=p&&p.note?p.note:'';
+  document.getElementById('overlayPortfolio').classList.add('open');
+  setTimeout(()=>document.getElementById('pfName').focus(),80);
+}
+function savePortfolio(){
+  const name=document.getElementById('pfName').value.trim();
+  const emoji=document.getElementById('pfEmoji').value.trim()||'📈';
+  const invested=parseFloat(document.getElementById('pfInvested').value)||0;
+  const note=document.getElementById('pfNote').value.trim();
+  if(!name){toast('Zadej název portfolia','warn');return;}
+  if(!S.portfolios) S.portfolios=[];
+  if(editPortfolioId){
+    const p=S.portfolios.find(p=>p.id===editPortfolioId);
+    if(p){p.name=name;p.emoji=emoji;p.invested=invested;p.note=note;}
+    toast('Portfolio upraveno ✓','success');
+  } else {
+    S.portfolios.push({id:Date.now(),name,emoji,invested,note,snapshots:[]});
+    toast(emoji+' '+name+' přidáno!','success');
+  }
+  save(); close2('overlayPortfolio'); render();
+}
+function deletePortfolio(id){
+  const p=(S.portfolios||[]).find(p=>p.id===id);
+  if(!p)return;
+  if(!confirm('Opravdu smazat portfolio '+p.name+'? Všechny snímky hodnot budou ztraceny.'))return;
+  S.portfolios=S.portfolios.filter(p=>p.id!==id);
+  save(); toast('Portfolio smazáno'); render();
+}
+
+function openSnapshotModal(id){
+  addSnapshotPortfolioId=id;
+  const p=(S.portfolios||[]).find(p=>p.id===id);
+  if(!p)return;
+  document.getElementById('snapPortfolioName').textContent=p.emoji+' '+p.name;
+  const ls=latestSnapshot(p);
+  document.getElementById('snapValue').value=ls?ls.value:'';
+  document.getElementById('snapDate').value=fd(new Date());
+  document.getElementById('snapNote').value='';
+  document.getElementById('overlaySnapshot').classList.add('open');
+  setTimeout(()=>document.getElementById('snapValue').focus(),80);
+}
+function saveSnapshot(){
+  const value=parseFloat(document.getElementById('snapValue').value);
+  const date=document.getElementById('snapDate').value||fd(new Date());
+  const note=document.getElementById('snapNote').value.trim();
+  if(!value||value<=0){toast('Zadej aktuální hodnotu portfolia','warn');return;}
+  const p=(S.portfolios||[]).find(p=>p.id===addSnapshotPortfolioId);
+  if(!p)return;
+  if(!p.snapshots) p.snapshots=[];
+  const existing=p.snapshots.findIndex(s=>s.date===date);
+  if(existing>=0) p.snapshots[existing]={date,value,note};
+  else p.snapshots.push({date,value,note});
+  p.snapshots.sort((a,b)=>a.date<b.date?-1:1);
+  save(); close2('overlaySnapshot'); toast('Hodnota uložena ✓','success'); render();
+}
+
+function renderInvestTab(t){
+  renderInvestSummaryBar(t);
+  renderPortfolioCards();
+  renderInvest(t);
+}
+
+function renderInvestSummaryBar(t){
+  const portfolios=S.portfolios||[];
+  const totalInvested=portfolios.reduce((s,p)=>s+(p.invested||0),0);
+  const totalValue=portfolios.reduce((s,p)=>{const ls=latestSnapshot(p);return s+(ls?ls.value:0);},0);
+  const gain=totalValue-totalInvested;
+  const gainPct=totalInvested>0?Math.round((gain/totalInvested)*100):0;
+  const monthInv=t.filter(x=>x.type==='investment').reduce((s,x)=>s+x.amount,0);
+  const monthInvN=t.filter(x=>x.type==='investment').length;
+  const valuePct=totalInvested>0?Math.min(150,Math.round((totalValue/totalInvested)*100)):0;
+  const g=id=>document.getElementById(id);
+  if(!g('ivInvested'))return;
+  g('ivInvested').textContent=totalInvested>0?fmt(totalInvested):(portfolios.length?'Nastav vloženo':'—');
+  g('ivInvested').style.color=totalInvested>0?'var(--gold)':'var(--muted)';
+  g('ivInvestedSub').textContent=portfolios.length?portfolios.length+' portfoli'+(portfolios.length===1?'o':'í'):'Přidej portfolio';
+  g('ivValue').textContent=totalValue>0?fmt(totalValue):'—';
+  g('ivValue').style.color=totalValue>0?(gain>=0?'var(--sage)':'var(--rose)'):'var(--muted)';
+  g('ivValueSub').textContent=totalValue>0&&totalInvested>0?valuePct+' % investované částky':'';
+  g('ivFill').style.width=Math.min(100,valuePct)+'%';
+  g('ivFill').style.background=gain>=0?'var(--sage)':'var(--rose)';
+  g('ivGain').textContent=totalInvested>0&&totalValue>0?(gain>=0?'+':'')+fmt(gain):'—';
+  g('ivGain').style.color=gain>=0?'var(--sage)':'var(--rose)';
+  g('ivGainSub').textContent=totalInvested>0&&totalValue>0?(gainPct>=0?'+':'')+gainPct+' % celkem':'';
+  g('ivMonth').textContent=monthInv>0?fmt(monthInv):'—';
+  g('ivMonth').style.color=monthInv>0?'var(--gold)':'var(--muted)';
+  g('ivMonthSub').textContent=monthInvN>0?monthInvN+' transakc'+(monthInvN===1?'e':'í')+' · '+MONTHS[cM]:'žádné tento měsíc';
+}
+
+function renderPortfolioCards(){
+  const el=document.getElementById('portfolioGrid');
+  if(!el)return;
+  const portfolios=S.portfolios||[];
+  if(!portfolios.length){
+    el.innerHTML='<div class="empty" style="grid-column:span 2;padding:26px 0"><strong>📈</strong>Zatím žádné portfolio.<br>Přidej první kliknutím výše.</div>';
+    return;
+  }
+  el.innerHTML=portfolios.map(p=>portfolioCard(p)).join('');
+}
+
+function portfolioCard(p){
+  const snapshots=(p.snapshots||[]).slice().sort((a,b)=>a.date<b.date?-1:1);
+  const ls=snapshots.length?snapshots[snapshots.length-1]:null;
+  const val=ls?ls.value:0;
+  const invested=p.invested||0;
+  const gain=ls?val-invested:0;
+  const gainPct=invested>0?Math.round((gain/invested)*100):0;
+  const gainCol=gain>=0?'var(--sage)':'var(--rose)';
+  const valPct=invested>0?Math.min(100,Math.round((val/invested)*100)):0;
+  const updDate=ls?new Date(ls.date+' 12:00'):null;
+  const updStr=updDate?updDate.getDate()+'. '+MONTHS[updDate.getMonth()]+' '+updDate.getFullYear():'';
+  const spark=snapshots.length>=2
+    ?drawSparkline(snapshots,110,38)
+    :'<div style="width:110px;height:38px;display:flex;align-items:center;justify-content:center;font-size:.62rem;color:var(--muted);border:1px dashed var(--border);border-radius:8px">přidej snímky</div>';
+  return '<div class="pf-card">'+
+    '<div class="pf-header">'+
+      '<div class="pf-name">'+p.emoji+' '+p.name+
+        (p.note?'<div style="font-size:.63rem;font-weight:400;font-family:Jost,sans-serif;color:var(--muted);margin-top:2px">'+p.note+'</div>':'')+
+      '</div>'+
+      '<div class="pf-sparkline">'+spark+'</div>'+
+    '</div>'+
+    '<div class="pf-metrics">'+
+      '<div class="pf-metric"><div class="pf-m-lbl">Vloženo</div><div class="pf-m-val">'+( invested?fmt(invested):'—')+'</div></div>'+
+      '<div class="pf-metric"><div class="pf-m-lbl">Hodnota</div><div class="pf-m-val" style="color:'+(val?gainCol:'var(--muted)')+'">'+( val?fmt(val):'—')+'</div></div>'+
+      '<div class="pf-metric"><div class="pf-m-lbl">Výnos</div><div class="pf-m-val" style="color:'+(ls&&invested?gainCol:'var(--muted)')+'">'+
+        (ls&&invested?(gainPct>=0?'+':'')+gainPct+' %':'—')+'</div></div>'+
+    '</div>'+
+    (ls&&invested
+      ?'<div class="pf-prog"><div class="pf-prog-fill" style="width:'+valPct+'%;background:'+gainCol+'"></div></div>'
+      :'<div style="height:4px;margin-bottom:7px"></div>')+
+    (updStr
+      ?'<div class="pf-date">📅 Aktualizováno: '+updStr+(snapshots.length>1?' · '+snapshots.length+' snímků':'')+'</div>'
+      :'<div class="pf-date" style="color:var(--gold)">⚡ Přidej hodnotu pro sledování vývoje</div>')+
+    '<div class="pf-acts">'+
+      '<button class="gbtn" onclick="openSnapshotModal('+p.id+')">📊 Přidat hodnotu</button>'+
+      '<button class="gbtn" onclick="openPortfolioModal('+p.id+')">✏️ Upravit</button>'+
+      '<button class="gbtn del" onclick="deletePortfolio('+p.id+')">× Smazat</button>'+
+    '</div></div>';
+}
+
 // ── RENDER ──
 function render(){
   syncCurrencyPicker();
@@ -1446,7 +1713,7 @@ function render(){
   if(activeTab==='overview'){ renderTxList(); renderGoalsMini(); renderInsights(t,income,expense,invest,rate); renderSavingsInsight(rate,income); renderSavingsTrend(); renderDonut('donutSvg2','donutLegend2',expense,t.filter(x=>x.type==='expense')); }
   if(activeTab==='budget')   renderBudget(t);
   if(activeTab==='goals')    { renderSavingsBar(); renderDefaultFunds(); renderGoalsList(t); renderGoalsInsights(); }
-  if(activeTab==='invest')   renderInvest(t);
+  if(activeTab==='invest')   renderInvestTab(t);
 }
 
 function renderTxList(){
