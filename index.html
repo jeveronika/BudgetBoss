@@ -84,6 +84,8 @@ header{display:flex;flex-direction:column;margin-bottom:20px}
 .add-btn:hover{background:var(--mauve);transform:scale(1.03)}
 .add-btn.sec{background:none;border:1px solid var(--border2);color:var(--muted)}
 .add-btn.sec:hover{background:var(--rose-light);border-color:var(--rose-mid);color:var(--rose);transform:none}
+.curr-pick{background:none;border:1px solid var(--border2);border-radius:50px;padding:5px 10px;font-family:'Jost',sans-serif;font-size:.72rem;color:var(--muted);cursor:pointer;transition:all .2s;outline:none;-webkit-appearance:none;appearance:none}
+.curr-pick:hover,.curr-pick:focus{border-color:var(--rose-mid);color:var(--rose);background:var(--rose-light)}
 
 /* FAB */
 .fab{position:fixed;bottom:26px;right:26px;width:54px;height:54px;background:linear-gradient(135deg,var(--rose),var(--mauve));border:none;border-radius:50%;color:#fff;font-size:1.6rem;cursor:pointer;box-shadow:0 4px 20px rgba(180,100,80,.4);transition:all .25s;z-index:100;display:flex;align-items:center;justify-content:center}
@@ -432,6 +434,13 @@ input[type=date]{-webkit-appearance:none;appearance:none}
       <button onclick="changeMonth(1)">&#8250;</button>
     </div>
     <div class="header-user">
+      <select id="currencyPicker" class="curr-pick" onchange="setCurrency(this.value)" title="Měna">
+        <option value="CZK">Kč</option>
+        <option value="EUR">€</option>
+        <option value="PLN">zł</option>
+        <option value="USD">$</option>
+        <option value="GBP">£</option>
+      </select>
       <span id="userInfo" style="font-size:.72rem;color:var(--muted);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
       <button id="btnLogout" class="add-btn sec" style="display:none">Odhlásit</button>
     </div>
@@ -826,6 +835,7 @@ input[type=date]{-webkit-appearance:none;appearance:none}
           if (cs.catMeta)              window.S.catMeta   = cs.catMeta;
           if (cs.balances)             window.S.balances  = cs.balances;
           if (cs.ruleRatio)            window.S.ruleRatio = cs.ruleRatio;
+          if (cs.currency)            window.S.currency  = cs.currency;
           // Synchronizuj localStorage s daty z cloudu
           localStorage.setItem('bb8', JSON.stringify(window.S));
           window.ensureDefaultFunds();  // re-add default funds if cloud data wiped them
@@ -912,6 +922,7 @@ function save(){ localStorage.setItem('bb8',JSON.stringify(S)); if(window.saveTo
 if(!S.catMeta)    S.catMeta={};
 if(!S.balances)   S.balances={};
 if(!S.ruleRatio)  S.ruleRatio={n:50,w:30,s:20};
+if(!S.currency)   S.currency='CZK';
 // Ensure the two default emergency funds always exist (cannot be deleted)
 function ensureDefaultFunds(){
   if(!S.goals) S.goals=[];
@@ -962,8 +973,24 @@ function fd(d){ return d.toISOString().slice(0,10); }
 function fmtDate(s){ if(!s)return''; const [y,m,d]=s.split('-'); return d+'.'+m+'.'+y; }
 function ck(){ return `${cY}-${cM}`; }
 function txs(){ return S.data[ck()]||[]; }
-function fmt(n){ return new Intl.NumberFormat('cs-CZ',{maximumFractionDigits:0}).format(n)+' Kč'; }
-function fmtK(n){ return n>=1000?(n/1000).toFixed(n%1000===0?0:1)+'k':String(n); }
+const CURR={
+  CZK:{sym:'Kč', pre:false},
+  EUR:{sym:'€',  pre:false},
+  PLN:{sym:'zł', pre:false},
+  USD:{sym:'$',  pre:true },
+  GBP:{sym:'£',  pre:true },
+};
+function curSym(){ return (CURR[S.currency]||CURR.CZK).sym; }
+function fmt(n){
+  const c=CURR[S.currency]||CURR.CZK;
+  const f=new Intl.NumberFormat('cs-CZ',{maximumFractionDigits:0}).format(n);
+  return c.pre?c.sym+f:f+' '+c.sym;
+}
+function fmtK(n){
+  const c=CURR[S.currency]||CURR.CZK;
+  const f=n>=1000?(n/1000).toFixed(n%1000===0?0:1)+'k':String(n);
+  return c.pre?c.sym+f:f+' '+c.sym;
+}
 function allCats(t){ return [...DEF[t],...(S.cc[t]||[])]; }
 function icon(cat){ return cat.split(' ').pop()||'📦'; }
 function cname(cat){ return cat.split(' ').slice(0,-1).join(' ')||cat; }
@@ -998,6 +1025,13 @@ document.querySelectorAll('.overlay').forEach(el=>{
   el.addEventListener('click',e=>{if(e.target===el)el.classList.remove('open');});
 });
 
+function setCurrency(c){
+  S.currency=c; save(); render();
+}
+function syncCurrencyPicker(){
+  const el=document.getElementById('currencyPicker');
+  if(el) el.value=S.currency||'CZK';
+}
 function changeMonth(d){
   cM+=d; if(cM>11){cM=0;cY++;}if(cM<0){cM=11;cY--;}
   // Auto-copy plan to new month if none exists
@@ -1341,6 +1375,7 @@ function saveEditTx(){
 
 // ── RENDER ──
 function render(){
+  syncCurrencyPicker();
   document.getElementById('monthLabel').textContent=MONTHS[cM]+' '+cY;
   const t=txs();
   const income =t.filter(x=>x.type==='income').    reduce((s,x)=>s+x.amount,0);
