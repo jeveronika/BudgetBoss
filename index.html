@@ -971,17 +971,6 @@ let now=new Date(),cY=now.getFullYear(),cM=now.getMonth();
 let txType='expense',txFilter='all',activeTab='overview',editGoalId=null,addGoalId=null;
 
 const k0=`${cY}-${cM}`;
-if(!S.data[k0]) S.data[k0]=[
-  {id:1,type:'income',    name:'Plat',             amount:52000,cat:'Plat 💼',       date:fd(new Date(cY,cM,1))},
-  {id:2,type:'income',    name:'Freelance projekt', amount:8000, cat:'Freelance 💻',  date:fd(new Date(cY,cM,5))},
-  {id:3,type:'expense',   name:'Nájem',             amount:14500,cat:'Bydlení 🏠',    date:fd(new Date(cY,cM,1))},
-  {id:4,type:'expense',   name:'Potraviny',          amount:4800, cat:'Jídlo 🍔',      date:fd(new Date(cY,cM,10))},
-  {id:5,type:'expense',   name:'Gym & SPA',          amount:1200, cat:'Zdraví 💊',     date:fd(new Date(cY,cM,3))},
-  {id:6,type:'expense',   name:'Skincare',           amount:890,  cat:'Krása 💅',      date:fd(new Date(cY,cM,8))},
-  {id:7,type:'expense',   name:'Netflix & Spotify',  amount:399,  cat:'Předplatné 📱', date:fd(new Date(cY,cM,12))},
-  {id:8,type:'investment',name:'ETF S&P500',         amount:5000, cat:'ETF 📈',        date:fd(new Date(cY,cM,2))},
-  {id:9,type:'investment',name:'Bitcoin DCA',        amount:2000, cat:'Krypto 🪙',     date:fd(new Date(cY,cM,7))},
-];
 // Migrate old format
 if(S.limits||S.incomePlans){
   if(!S.plans) S.plans={};
@@ -989,23 +978,6 @@ if(S.limits||S.incomePlans){
   delete S.limits; delete S.incomePlans;
 }
 if(!S.plans) S.plans={};
-if(!S.plans[k0]) S.plans[k0]={
-  limits:{'Bydlení 🏠':16000,'Jídlo 🍔':6000,'Zdraví 💊':1500,'Krása 💅':1200,'Předplatné 📱':500,'Zábava 🎮':2000},
-  income:{'Plat 💼':52000,'Freelance 💻':5000}
-};
-if(_isNew && !S.goals.length) S.goals=[
-  {id:1,name:'Dovolená na Bali',emoji:'🌴',target:80000,saved:23000},
-  {id:2,name:'Nový MacBook',    emoji:'💻',target:55000,saved:18000},
-];
-for(let i=1;i<=5;i++){
-  let m=cM-i,y=cY; if(m<0){m+=12;y--;}
-  const k=`${y}-${m}`;
-  if(!S.data[k]) S.data[k]=[
-    {id:Date.now()+i,    type:'income',    name:'Plat',   amount:50000+Math.round((Math.random()-.4)*8000),cat:'Plat 💼',   date:''},
-    {id:Date.now()+i+100,type:'expense',   name:'Výdaje', amount:20000+Math.round((Math.random()-.3)*5000),cat:'Ostatní 📦',date:''},
-    {id:Date.now()+i+200,type:'investment',name:'ETF',    amount:5000+Math.round((Math.random()-.2)*3000), cat:'ETF 📈',    date:''},
-  ];
-}
 save();
 
 function save(){ localStorage.setItem('bb8',JSON.stringify(S)); if(window.saveToCloud) window.saveToCloud(); }
