@@ -726,6 +726,7 @@ input[type=date]{-webkit-appearance:none;appearance:none}
     </div>
     <div class="fg" id="catFg"><label>Kategorie</label><select id="txCat"></select></div>
     <div class="fg" id="goalPickRow" style="display:none"><label>Vyber cíl</label><select id="txGoalPick"></select></div>
+    <div class="fg" id="portfolioPickRow" style="display:none"><label>Portfolio</label><select id="txPortfolioPick"></select></div>
     <div class="fg" id="kindFg" style="display:none">
       <label>Typ výdaje</label>
       <div class="kind-row">
@@ -733,7 +734,7 @@ input[type=date]{-webkit-appearance:none;appearance:none}
         <button class="kind-btn want" id="kind-want" onclick="setKind('want')">🎉 Radost</button>
       </div>
     </div>
-    <div class="fg" style="margin-bottom:0">
+    <div class="fg" id="catMgrFg" style="margin-bottom:0">
       <button class="add-btn sec" style="width:100%;justify-content:center" onclick="openCatManager()">⚙ Spravovat kategorie</button>
     </div>
     <div class="mactions">
@@ -1167,13 +1168,25 @@ function setTxType(t){
   txType=t;
   ['expense','income','investment','goal'].forEach(tp=>{const el=document.getElementById('tt-'+tp);if(el)el.classList.toggle('active',tp===t);});
   const isGoal=t==='goal';
+  const isInvest=t==='investment';
+  const hasPF=(S.portfolios||[]).length>0;
+  const usePF=isInvest&&hasPF;
   document.getElementById('goalPickRow').style.display=isGoal?'':'none';
-  document.getElementById('catFg').style.display=isGoal?'none':'';
+  document.getElementById('portfolioPickRow').style.display=usePF?'':'none';
+  document.getElementById('catFg').style.display=(isGoal||usePF)?'none':'';
   document.getElementById('kindFg').style.display=t==='expense'?'':'none';
+  // Hide "Spravovat kategorie" when portfolio picker is active (not relevant)
+  const cmf=document.getElementById('catMgrFg');
+  if(cmf) cmf.style.display=(isGoal||usePF)?'none':'';
   if(isGoal){
     const pick=document.getElementById('txGoalPick');
     pick.innerHTML=S.goals.length?S.goals.map(g=>'<option value="'+g.id+'">'+g.emoji+' '+g.name+'</option>').join(''):'<option value="">Nejprve přidej cíl</option>';
-  } else { populateCat(); }
+  } else if(usePF){
+    const pick=document.getElementById('txPortfolioPick');
+    pick.innerHTML=(S.portfolios||[]).map(p=>'<option value="'+p.id+'">'+p.emoji+' '+p.name+'</option>').join('');
+  } else {
+    populateCat();
+  }
 }
 function openTxModal(){
   document.getElementById('txDate').value=fd(new Date());
@@ -1199,6 +1212,13 @@ function addTransaction(){
     S.data[k].push({id:Date.now(),type:'investment',name,amount,cat:g.name+' '+g.emoji,goalId,date});
     g.saved=Math.min(g.target,g.saved+amount);
     toast(fmt(amount)+' → '+g.emoji+' '+g.name,'success');
+  } else if(txType==='investment'&&document.getElementById('portfolioPickRow').style.display!=='none'){
+    // Investment linked to a portfolio
+    const pfId=parseInt(document.getElementById('txPortfolioPick').value);
+    const pf=(S.portfolios||[]).find(p=>p.id===pfId);
+    const cat=pf?pf.name+' '+pf.emoji:'Investice 📈';
+    S.data[k].push({id:Date.now(),type:'investment',name,amount,cat,portfolioId:pfId||null,date});
+    toast(name+' — '+fmt(amount)+' → '+(pf?pf.emoji+' '+pf.name:'investice'),'success');
   } else {
     const cat=document.getElementById('txCat').value;
     const tx={id:Date.now(),type:txType,name,amount,cat,date};
@@ -1436,6 +1456,9 @@ function openEditTx(id){
   if(tx.goalId){
     ce.innerHTML=S.goals.map(g=>'<option value="'+g.id+'"'+(g.id===tx.goalId?' selected':'')+'>'+g.name+' '+g.emoji+'</option>').join('');
     ce.setAttribute('data-mode','goal');
+  } else if(tx.portfolioId&&(S.portfolios||[]).length){
+    ce.innerHTML=(S.portfolios||[]).map(p=>'<option value="'+p.id+'"'+(p.id===tx.portfolioId?' selected':'')+'>'+p.emoji+' '+p.name+'</option>').join('');
+    ce.setAttribute('data-mode','portfolio');
   } else {
     ce.innerHTML=allCats(tx.type).map(c=>'<option'+(c===tx.cat?' selected':'')+'>'+c+'</option>').join('');
     ce.setAttribute('data-mode','normal');
@@ -1458,7 +1481,13 @@ function saveEditTx(){
     if(tx.goalId){const og=S.goals.find(g=>g.id===tx.goalId);if(og)og.saved=Math.max(0,og.saved-oldAmt);}
     const ng=S.goals.find(g=>g.id===nid);
     if(ng){ng.saved=Math.min(ng.target,ng.saved+tx.amount);tx.goalId=nid;tx.cat=ng.name+' '+ng.emoji;}
-  } else { tx.cat=ce.value; }
+  } else if(ce.getAttribute('data-mode')==='portfolio'){
+    const nid=parseInt(ce.value);
+    const pf=(S.portfolios||[]).find(p=>p.id===nid);
+    if(pf){tx.portfolioId=nid;tx.cat=pf.name+' '+pf.emoji;}
+  } else {
+    tx.cat=ce.value;
+  }
   if(tx.type==='expense') tx.kind=editKind;
   save(); close2('overlayEditTx'); toast('Upraveno ✓','success'); render();
 }
