@@ -236,7 +236,8 @@ header{display:flex;flex-direction:column;margin-bottom:20px}
 .form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}.form-row .fg{min-width:0}
 .fg{margin-bottom:12px}
 .fg label{display:block;font-size:.64rem;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);margin-bottom:5px}
-.fg input,.fg select{width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:11px;color:var(--text);padding:9px 13px;font-family:'Jost',sans-serif;font-size:.85rem;outline:none;transition:border-color .2s}
+.fg input,.fg select{width:100%;max-width:100%;box-sizing:border-box;background:var(--bg2);border:1px solid var(--border);border-radius:11px;color:var(--text);padding:9px 13px;font-family:'Jost',sans-serif;font-size:.85rem;outline:none;transition:border-color .2s}
+input[type=date]{-webkit-appearance:none;appearance:none}
 .fg input:focus,.fg select:focus{border-color:var(--rose-mid);background:var(--surface)}
 .type-row{display:flex;gap:6px;margin-bottom:12px}
 .ttype{flex:1;padding:9px 3px;border-radius:11px;border:1px solid var(--border);background:none;font-family:'Jost',sans-serif;font-size:.74rem;font-weight:500;cursor:pointer;color:var(--muted);transition:all .2s;text-align:center}
@@ -347,7 +348,7 @@ header{display:flex;flex-direction:column;margin-bottom:20px}
   .mg,.mg2,.charts-grid,.overview-cols,.goals-grid{grid-template-columns:1fr}
   .charts-grid .full{grid-column:span 1}
   .brand-title{font-size:2rem}
-  .header-top .month-nav{order:10;flex:0 0 100%}
+  .header-top .month-nav{order:10;flex:0 0 100%;justify-content:center}
   #userInfo{display:none}
   /* 50/30/20 buckets: stack label + bar vertically */
   .rule-bucket{flex-direction:column;align-items:stretch;gap:8px;padding:12px 14px}
@@ -440,12 +441,6 @@ header{display:flex;flex-direction:column;margin-bottom:20px}
 
 <!-- Health bar -->
 <div class="health-bar">
-  <div class="hs-item"><div class="hs-val" id="hsIncome" style="color:var(--sage)">—</div><div class="hs-lbl">Příjmy</div></div>
-  <div class="hs-div"></div>
-  <div class="hs-item"><div class="hs-val" id="hsExpense" style="color:var(--rose)">—</div><div class="hs-lbl">Výdaje</div></div>
-  <div class="hs-div"></div>
-  <div class="hs-item"><div class="hs-val" id="hsRate" style="color:var(--mauve)">—</div><div class="hs-lbl">Spoření</div></div>
-  <div class="hs-div"></div>
   <div class="hs-health">
     <div class="hs-head">
       <span style="display:flex;align-items:center;gap:5px">
@@ -686,9 +681,11 @@ header{display:flex;flex-direction:column;margin-bottom:20px}
     <div class="fg" id="goalNameFg"><label>Název cíle</label><input id="goalName" type="text" placeholder="Dovolená, Nové auto…"></div>
     <div style="display:flex;gap:10px">
       <div class="fg" id="goalEmojiFg" style="width:66px"><label>Emoji</label><input id="goalEmoji" type="text" maxlength="2" placeholder="🎯"></div>
-      <div class="fg" style="flex:1"><label>Cílová částka (Kč)</label><input id="goalTarget" type="number" placeholder="50000"></div>
+      <div class="fg" style="flex:1"><label>Cílová částka (Kč)</label><input id="goalTarget" type="number" placeholder="50000" oninput="updateGoalMonthlyHint()"></div>
     </div>
-    <div class="fg"><label>Naspořeno (Kč)</label><input id="goalSaved" type="number" placeholder="0"></div>
+    <div class="fg"><label>Naspořeno (Kč)</label><input id="goalSaved" type="number" placeholder="0" oninput="updateGoalMonthlyHint()"></div>
+    <div class="fg" id="goalDeadlineFg"><label>Chci splnit do (nepovinné)</label><input id="goalDeadline" type="month" oninput="updateGoalMonthlyHint()" placeholder=""></div>
+    <div id="goalMonthlyHint" style="display:none;font-size:.71rem;color:var(--mauve);background:var(--mauve-light);border-radius:8px;padding:6px 10px;margin-bottom:10px"></div>
     <div class="mactions">
       <button class="mbtn-cancel" onclick="close2('overlayGoal')">Zrušit</button>
       <button class="mbtn-ok" onclick="saveGoal()">Uložit</button>
@@ -1097,10 +1094,40 @@ function addCarryoverIncome(){
   save(); toast('Přidáno '+fmt(prevNet)+' jako příjem ✓','success'); render();
 }
 
+function calcGoalMonthly(target,saved,deadline){
+  if(!deadline||!target) return null;
+  const [dy,dm]=deadline.split('-').map(Number);
+  const now2=new Date();
+  const months=Math.max(1,(dy-now2.getFullYear())*12+(dm-1-now2.getMonth()));
+  const remaining=Math.max(0,target-(saved||0));
+  return remaining>0?Math.ceil(remaining/months):0;
+}
+function updateGoalMonthlyHint(){
+  const target=parseFloat(document.getElementById('goalTarget').value)||0;
+  const saved=parseFloat(document.getElementById('goalSaved').value)||0;
+  const deadline=document.getElementById('goalDeadline').value;
+  const hintEl=document.getElementById('goalMonthlyHint');
+  if(!hintEl)return;
+  const monthly=calcGoalMonthly(target,saved,deadline);
+  if(monthly!==null&&monthly>0){
+    hintEl.style.display='';
+    hintEl.textContent='📅 Měsíčně potřeba odkládat: '+fmt(monthly);
+  } else if(monthly===0&&target&&saved>=target){
+    hintEl.style.display='';
+    hintEl.textContent='🎉 Cíl je již splněn!';
+  } else {
+    hintEl.style.display='none';
+  }
+}
 function openGoalModal(){
   editGoalId=null;
   document.getElementById('goalModalTitle').innerHTML='Nový <em>cíl</em>';
-  ['goalName','goalEmoji','goalTarget','goalSaved'].forEach(id=>document.getElementById(id).value=id==='goalEmoji'?'🎯':id==='goalSaved'?'0':'');
+  ['goalName','goalEmoji','goalTarget','goalSaved','goalDeadline'].forEach(id=>document.getElementById(id).value=id==='goalEmoji'?'🎯':id==='goalSaved'?'0':'');
+  document.getElementById('goalFundHint').style.display='none';
+  document.getElementById('goalMonthlyHint').style.display='none';
+  document.getElementById('goalNameFg').style.display='';
+  document.getElementById('goalEmojiFg').style.display='';
+  document.getElementById('goalDeadlineFg').style.display='';
   document.getElementById('overlayGoal').classList.add('open');
   setTimeout(()=>document.getElementById('goalName').focus(),80);
 }
@@ -1113,14 +1140,18 @@ function openEditGoalModal(id){
   document.getElementById('goalEmoji').value=g.emoji;
   document.getElementById('goalTarget').value=g.target||'';
   document.getElementById('goalSaved').value=g.saved||'';
+  document.getElementById('goalDeadline').value=g.deadline||'';
   document.getElementById('goalNameFg').style.display=isDF?'none':'';
   document.getElementById('goalEmojiFg').style.display=isDF?'none':'';
+  document.getElementById('goalDeadlineFg').style.display=isDF?'none':'';
   const hint=document.getElementById('goalFundHint');
   if(isDF&&hint){
     hint.style.display='';
     if(g.fundType==='peace') hint.innerHTML='🕊️ <strong>Klid na duši</strong> — nastav cíl na výši jednoho měsíčního příjmu. Slouží na nečekané výdaje (opravy, zdraví). Lze z něj čerpat.';
     else hint.innerHTML='🛡️ <strong>Rezerva</strong> — nastav cíl na 3–6× měsíčních výdajů. Na tento fond se nesahá. Chrání tě při ztrátě příjmu.';
   } else if(hint){ hint.style.display='none'; }
+  document.getElementById('goalMonthlyHint').style.display='none';
+  updateGoalMonthlyHint();
   document.getElementById('overlayGoal').classList.add('open');
 }
 function saveGoal(){
@@ -1128,18 +1159,19 @@ function saveGoal(){
   const target=parseFloat(document.getElementById('goalTarget').value);
   const saved=parseFloat(document.getElementById('goalSaved').value)||0;
   const emoji=document.getElementById('goalEmoji').value||'🎯';
+  const deadline=document.getElementById('goalDeadline').value||'';
   const g=editGoalId?S.goals.find(g=>g.id===editGoalId):null;
   const isDF=g&&g.isDefault;
   if(!isDF&&(!name||!target)){toast('Vyplň název a cíl','warn');return;}
   if(isDF&&!target){toast('Zadej cílovou částku','warn');return;}
   if(editGoalId){
     if(g){
-      if(!isDF){g.name=name;g.emoji=emoji;}  // don't overwrite name/emoji for default funds
+      if(!isDF){g.name=name;g.emoji=emoji;g.deadline=deadline;}
       g.target=target; g.saved=saved;
     }
     toast(isDF?g.emoji+' '+g.name+' upraven ✓':'Cíl upraven ✓','success');
   } else {
-    S.goals.push({id:Date.now(),name,emoji,target,saved});
+    S.goals.push({id:Date.now(),name,emoji,target,saved,deadline});
     toast(emoji+' '+name+' přidán!','success');
   }
   save(); close2('overlayGoal'); render();
@@ -1345,10 +1377,6 @@ function render(){
   document.getElementById('hsFill').style.cssText='width:'+h+'%;background:'+hc;
   document.getElementById('hsPct').textContent=h+'%';
   document.getElementById('hsMsg').textContent=hm; document.getElementById('hsMsg').style.color=hc;
-  document.getElementById('hsIncome').textContent=fmtK(income);
-  document.getElementById('hsExpense').textContent=fmtK(expense);
-  document.getElementById('hsRate').textContent=rate+'%';
-
   // Savings ring
   const circ=144.5,offset=circ-(Math.min(rate,100)/100)*circ;
   document.getElementById('srCircle').style.strokeDashoffset=Math.max(0,offset);
@@ -1449,11 +1477,20 @@ function renderGoalsMini(){
 function goalCard(g){
   const pct=g.target?Math.min(100,Math.round(((g.saved||0)/g.target)*100)):0;
   const bc=pct>=100?'background:var(--sage)':pct>=75?'background:var(--gold)':'';
+  const monthly=calcGoalMonthly(g.target,g.saved,g.deadline);
+  const dlParts=g.deadline?g.deadline.split('-').map(Number):null;
+  const dlStr=dlParts?MONTHS[dlParts[1]-1]+' '+dlParts[0]:'';
+  const deadlineLine=g.deadline&&pct<100
+    ?'<div style="font-size:.67rem;color:var(--mauve);margin-bottom:7px;display:flex;gap:8px;flex-wrap:wrap">'+
+      '<span>📅 Do: '+dlStr+'</span>'+
+      (monthly>0?'<span>· '+fmt(monthly)+' / měs.</span>':'<span>· Cíl splněn ✓</span>')+
+    '</div>':'';
   return '<div class="goal-card">'+
     '<div class="goal-top"><span class="goal-emoji">'+g.emoji+'</span><span class="goal-gname">'+g.name+'</span>'+
     '<span class="goal-badge'+(pct>=100?' done':'')+'">'+(pct>=100?'✓ Splněno':pct+'%')+'</span></div>'+
-    '<div class="goal-nums"><span>'+fmt(g.saved)+' naspořeno</span><span>cíl: '+fmt(g.target)+'</span></div>'+
+    '<div class="goal-nums"><span>'+fmt(g.saved||0)+' naspořeno</span><span>cíl: '+fmt(g.target)+'</span></div>'+
     '<div class="goal-bar-wrap"><div class="goal-bar-fill" style="width:'+pct+'%;'+bc+'"></div></div>'+
+    deadlineLine+
     '<div class="goal-acts">'+
       '<button class="gbtn" onclick="openAddGoalModal('+g.id+')">💸 Přidat</button>'+
       '<button class="gbtn" onclick="openEditGoalModal('+g.id+')">✏️ Upravit</button>'+
@@ -1851,6 +1888,15 @@ function renderDefaultFunds(){
     fCard(reserve,'var(--mauve)','Pevná rezerva — přežití 3–6 měsíců bez příjmu. Nesahat, pokud to není opravdu nutné.',reserveHint);
 }
 
+function tip(col,icon,title,body){
+  const bg=col==='info'?'var(--rose-light)':col==='good'?'var(--sage-light)':col==='warn'?'#fffbeb':'var(--mauve-light)';
+  const bd=col==='info'?'var(--rose-mid)':col==='good'?'#b8d4bb':col==='warn'?'#f0d89a':'#d4a0b8';
+  const tc=col==='info'?'#7a3838':col==='good'?'#3a6a3e':col==='warn'?'#7a5e18':'#6a3050';
+  return '<div style="background:'+bg+';border:1px solid '+bd+';border-radius:12px;padding:11px 13px;margin-bottom:8px">'+
+    '<div style="font-size:.62rem;font-weight:600;color:'+tc+';text-transform:uppercase;letter-spacing:.8px;margin-bottom:5px">'+icon+' '+title+'</div>'+
+    '<div style="font-size:.78rem;color:var(--text);line-height:1.55">'+body+'</div>'+
+  '</div>';
+}
 function renderGoalsInsights(){
   const el=document.getElementById('goalsInsights');
   if(!el)return;
@@ -1862,36 +1908,36 @@ function renderGoalsInsights(){
   const reserveDone=reserve&&reserve.target>0&&(reserve.saved||0)>=reserve.target;
   // Priority advice
   if(!peace||!peace.target){
-    h+='<div class="insight info"><span class="insight-icon">🕊️</span>Nastav cíl pro <strong>Klid na duši</strong> — rovná se 1× tvůj měsíční příjem. Je to první krok.</div>';
+    h+=tip('info','🕊️','Priorita','Nastav cíl pro <strong>Klid na duši</strong> — rovná se 1× tvůj měsíční příjem. Je to první krok.');
   } else if(!peaceDone){
     const need=peace.target-(peace.saved||0);
-    h+='<div class="insight info"><span class="insight-icon">🕊️</span>Priorita: naplnit <strong>Klid na duši</strong>. Chybí <strong>'+fmt(need)+'</strong>. Pak teprve Rezerva a investice.</div>';
+    h+=tip('info','🕊️','Priorita','Naplň <strong>Klid na duši</strong>.<br>Chybí <strong>'+fmt(need)+'</strong>. Pak Rezerva, pak investice.');
   } else if(!reserve||!reserve.target){
-    h+='<div class="insight good"><span class="insight-icon">✅</span><strong>Klid na duši splněn!</strong> Dalším krokem je nastavit cíl pro <strong>Rezervu</strong> (3–6× výdaje).</div>';
+    h+=tip('good','✅','Klid na duši splněn!','Nastav teď cíl pro <strong>Rezervu</strong> — doporučeno 3–6× měsíční výdaje.');
   } else if(!reserveDone){
     const need=reserve.target-(reserve.saved||0);
-    h+='<div class="insight info"><span class="insight-icon">🛡️</span>Klid na duši OK! Teď buduj <strong>Rezervu</strong>. Chybí <strong>'+fmt(need)+'</strong>.</div>';
+    h+=tip('info','🛡️','Buduj Rezervu','Klid na duši je splněn.<br>Na Rezervě chybí <strong>'+fmt(need)+'</strong>.');
   } else {
-    h+='<div class="insight good"><span class="insight-icon">🚀</span>Oba záchranné fondy splněny! Teď je čas začít <strong>pravidelně investovat</strong>.</div>';
+    h+=tip('good','🚀','Záchranné fondy OK!','Oba fondy jsou naplněny. Teď je ten správný čas <strong>pravidelně investovat</strong>.');
   }
   // Custom goal insights
   if(custom.length){
-    const closest=custom.filter(g=>g.saved<g.target).sort((a,b)=>(b.saved/b.target)-(a.saved/a.target))[0];
-    if(closest){
-      const pct=Math.round((closest.saved||0)/closest.target*100);
-      h+='<div class="insight warn"><span class="insight-icon">🎯</span>Nejblíže splnění: <strong>'+closest.emoji+' '+closest.name+'</strong> — '+pct+' % (chybí '+fmt(closest.target-(closest.saved||0))+')</div>';
-    }
     const now2=new Date();
     const daysInMonth=new Date(now2.getFullYear(),now2.getMonth()+1,0).getDate();
     const monthsLeft=Math.max(0.5,(11-now2.getMonth())+(1-now2.getDate()/daysInMonth));
     const remaining=custom.reduce((s,g)=>s+Math.max(0,g.target-(g.saved||0)),0);
     if(remaining>0){
-      h+='<div class="insight warn"><span class="insight-icon">📅</span>Pro splnění vlastních cílů do konce roku: <strong>'+fmt(Math.round(remaining/monthsLeft))+' / měs.</strong></div>';
+      h+=tip('warn','📅','Vlastní cíle do konce roku','Potřebuješ odkládat <strong>'+fmt(Math.round(remaining/monthsLeft))+' měsíčně</strong> pro splnění všech cílů.');
+    }
+    const closest=custom.filter(g=>(g.saved||0)<g.target).sort((a,b)=>((b.saved||0)/b.target)-((a.saved||0)/a.target))[0];
+    if(closest){
+      const pct=Math.round((closest.saved||0)/closest.target*100);
+      h+=tip('warn','🎯','Nejblíže splnění',closest.emoji+' <strong>'+closest.name+'</strong><br>'+pct+' % · chybí '+fmt(closest.target-(closest.saved||0)));
     }
     const doneCust=custom.filter(g=>(g.saved||0)>=g.target);
-    if(doneCust.length) h+='<div class="insight good"><span class="insight-icon">🎉</span>'+doneCust.map(g=>g.emoji+' '+g.name).join(', ')+' — '+( doneCust.length===1?'cíl splněn':'cíle splněny')+'!</div>';
+    if(doneCust.length) h+=tip('good','🎉','Splněno!',doneCust.map(g=>g.emoji+' <strong>'+g.name+'</strong>').join('<br>')+' — '+( doneCust.length===1?'cíl splněn':'cíle splněny')+'!');
   } else {
-    h+='<div class="insight info" style="margin-top:8px"><span class="insight-icon">💡</span>Přidej vlastní cíle (dovolená, nové auto…). Uvidíš, kolik měsíčně potřebuješ odkládat.</div>';
+    h+=tip('info','💡','Vlastní cíle','Přidej cíle jako dovolená nebo nové auto. Uvidíš, kolik měsíčně potřebuješ odkládat.');
   }
   el.innerHTML=h;
 }
