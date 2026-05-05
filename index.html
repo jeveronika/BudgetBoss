@@ -4,6 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Budget Queen</title>
+<!-- Favicon for browser tab -->
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%23fdf8f5'/%3E%3Crect width='100' height='100' rx='22' fill='%23d4807a' opacity='.13'/%3E%3Ctext x='50' y='68' text-anchor='middle' font-family='Georgia%2Cserif' font-size='56' font-weight='700' font-style='italic' fill='%23d4807a'%3EQ%3C/text%3E%3C/svg%3E">
+<!-- PWA / iOS home screen -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Budget Queen">
+<meta name="theme-color" content="#d4807a">
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400;1,600&family=Jost:wght@300;400;500;600&display=swap');
 :root{
@@ -1943,6 +1950,52 @@ function renderGoalsInsights(){
 }
 
 render();
+
+// Generate app icon for iOS home screen & Android PWA
+(function(){
+  try{
+    const s=512,c=document.createElement('canvas');c.width=c.height=s;
+    const x=c.getContext('2d');
+    // Rounded-rect background
+    const r=s*0.18;
+    function rr(x2,y2,w,h,rad){
+      x.beginPath();x.moveTo(x2+rad,y2);x.lineTo(x2+w-rad,y2);
+      x.arcTo(x2+w,y2,x2+w,y2+rad,rad);x.lineTo(x2+w,y2+h-rad);
+      x.arcTo(x2+w,y2+h,x2+w-rad,y2+h,rad);x.lineTo(x2+rad,y2+h);
+      x.arcTo(x2,y2+h,x2,y2+h-rad,rad);x.lineTo(x2,y2+rad);
+      x.arcTo(x2,y2,x2+rad,y2,rad);x.closePath();
+    }
+    // Warm cream background
+    const g=x.createLinearGradient(0,0,s,s);
+    g.addColorStop(0,'#fdf8f5');g.addColorStop(1,'#f0e4da');
+    x.fillStyle=g;rr(0,0,s,s,r);x.fill();
+    // Subtle rose glow top-right
+    const gl=x.createRadialGradient(s*.78,s*.22,0,s*.78,s*.22,s*.5);
+    gl.addColorStop(0,'rgba(212,128,122,0.22)');gl.addColorStop(1,'rgba(212,128,122,0)');
+    x.fillStyle=gl;rr(0,0,s,s,r);x.fill();
+    // Decorative dots (mini crown)
+    [[s*.38,s*.2,'#d4807a'],[s*.5,s*.14,'#b5788a'],[s*.62,s*.2,'#8aaa8e']].forEach(([cx,cy,col])=>{
+      x.fillStyle=col;x.beginPath();x.arc(cx,cy,s*.035,0,Math.PI*2);x.fill();
+    });
+    // Crown point lines
+    x.strokeStyle='rgba(212,128,122,0.5)';x.lineWidth=s*.022;x.lineCap='round';
+    [[s*.38,s*.2,s*.38,s*.32],[s*.5,s*.14,s*.5,s*.32],[s*.62,s*.2,s*.62,s*.32]].forEach(([x1,y1,x2,y2])=>{
+      x.beginPath();x.moveTo(x1,y1);x.lineTo(x2,y2);x.stroke();
+    });
+    // Crown base bar
+    x.fillStyle='rgba(212,128,122,0.35)';
+    x.beginPath();x.rect(s*.3,s*.3,s*.4,s*.055);x.fill();
+    // Italic Q
+    x.fillStyle='#d4807a';
+    x.font='italic 700 '+(s*.52)+'px Georgia,serif';
+    x.textAlign='center';x.textBaseline='middle';
+    x.fillText('Q',s*.5,s*.62);
+    // Set apple-touch-icon
+    const al=document.createElement('link');
+    al.rel='apple-touch-icon';al.sizes='512x512';al.href=c.toDataURL('image/png');
+    document.head.appendChild(al);
+  }catch(e){}
+})();
 </script>
 </body>
 </html>
