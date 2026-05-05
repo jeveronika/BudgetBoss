@@ -1190,6 +1190,7 @@ function addTransaction(){
     const pf=(S.portfolios||[]).find(p=>p.id===pfId);
     const cat=pf?pf.name+' '+pf.emoji:'Investice 📈';
     S.data[k].push({id:Date.now(),type:'investment',name,amount,cat,portfolioId:pfId||null,date});
+    if(pf) pf.invested=(pf.invested||0)+amount;  // propagate to portfolio cost basis
     toast(name+' — '+fmt(amount)+' → '+(pf?pf.emoji+' '+pf.name:'investice'),'success');
   } else {
     const cat=document.getElementById('txCat').value;
@@ -1200,7 +1201,16 @@ function addTransaction(){
   }
   save(); close2('overlayTx'); render();
 }
-function deleteTx(id){ const k=ck(); S.data[k]=(S.data[k]||[]).filter(t=>t.id!==id); save(); toast('Smazáno'); render(); }
+function deleteTx(id){
+  const k=ck();
+  const tx=(S.data[k]||[]).find(x=>x.id===id);
+  if(tx&&tx.portfolioId){
+    const pf=(S.portfolios||[]).find(p=>p.id===tx.portfolioId);
+    if(pf) pf.invested=Math.max(0,(pf.invested||0)-tx.amount);
+  }
+  S.data[k]=(S.data[k]||[]).filter(t=>t.id!==id);
+  save(); toast('Smazáno'); render();
+}
 function addCarryoverIncome(){
   // Compute previous month's net balance
   let pm=cM-1,py=cY; if(pm<0){pm=11;py--;}
@@ -1455,8 +1465,14 @@ function saveEditTx(){
     if(ng){ng.saved=Math.min(ng.target,ng.saved+tx.amount);tx.goalId=nid;tx.cat=ng.name+' '+ng.emoji;}
   } else if(ce.getAttribute('data-mode')==='portfolio'){
     const nid=parseInt(ce.value);
+    // Subtract old amount from previous portfolio
+    if(tx.portfolioId){
+      const oldPf=(S.portfolios||[]).find(p=>p.id===tx.portfolioId);
+      if(oldPf) oldPf.invested=Math.max(0,(oldPf.invested||0)-oldAmt);
+    }
+    // Add new amount to selected portfolio
     const pf=(S.portfolios||[]).find(p=>p.id===nid);
-    if(pf){tx.portfolioId=nid;tx.cat=pf.name+' '+pf.emoji;}
+    if(pf){pf.invested=(pf.invested||0)+tx.amount;tx.portfolioId=nid;tx.cat=pf.name+' '+pf.emoji;}
   } else {
     tx.cat=ce.value;
   }
