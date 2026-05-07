@@ -502,7 +502,7 @@ input[type=date]{-webkit-appearance:none;appearance:none}
 <div class="summary">
   <div class="s-card income"><div class="s-deco"></div><span class="s-icon">🌿</span><div class="s-label">Příjmy</div><div class="s-value" id="sIncome">0 Kč</div><div class="s-sub" id="sIncomeC">0 položek</div><div class="pbar"><div class="pfill" style="width:100%"></div></div></div>
   <div class="s-card expense"><div class="s-deco"></div><span class="s-icon">🌸</span><div class="s-label">Výdaje</div><div class="s-value" id="sExpense">0 Kč</div><div class="s-sub" id="sExpenseC">0 položek</div><div class="pbar"><div class="pfill" id="pExpense" style="width:0%"></div></div></div>
-  <div class="s-card invest"><div class="s-deco"></div><span class="s-icon">💎</span><div class="s-label">Investice</div><div class="s-value" id="sInvest">0 Kč</div><div class="s-sub" id="sInvestC">0 položek</div><div class="pbar"><div class="pfill" id="pInvest" style="width:0%"></div></div></div>
+  <div class="s-card invest"><div class="s-deco"></div><span class="s-icon">💎</span><div class="s-label">Úspory & investice</div><div class="s-value" id="sInvest">0 Kč</div><div class="s-sub" id="sInvestC">0 položek</div><div class="pbar"><div class="pfill" id="pInvest" style="width:0%"></div></div></div>
   <div class="s-card balance">
     <div class="s-deco"></div><span class="s-icon">💳</span>
     <div class="s-label">Měsíční přebytek</div>
@@ -553,7 +553,6 @@ input[type=date]{-webkit-appearance:none;appearance:none}
       </div>
       <div class="panel">
         <div class="ptitle">Míra spoření</div>
-        <div id="savingsInsight" style="margin-bottom:10px"></div>
         <div class="savings-rate">
           <div class="sr-ring">
             <svg width="58" height="58" viewBox="0 0 58 58">
@@ -695,12 +694,6 @@ input[type=date]{-webkit-appearance:none;appearance:none}
   </div>
   <div class="mg2" id="portfolioGrid" style="margin-bottom:18px"></div>
 
-  <!-- Monthly investment transactions -->
-  <div class="panel">
-    <div class="ptitle">Investice tento měsíc</div>
-    <p style="font-size:.72rem;color:var(--muted);margin-bottom:14px;line-height:1.5">Přehled transakcí označených jako <strong>📈 Investice</strong>. Až naplníš oba záchranné fondy — investuj pravidelně.</p>
-    <div class="bar-chart" id="investChart"><div class="empty"><strong>📈</strong>Žádné investice v tomto měsíci.</div></div>
-  </div>
 </div>
 
 </div>
@@ -965,7 +958,6 @@ const DEF={
   investment:['ETF 📈','Akcie 📊','Krypto 🪙','Nemovitosti 🏡','Spořicí účet 🏦','Penzijní fond 🎯','Ostatní investice 💎']
 };
 
-const _isNew = !localStorage.getItem('bb8');
 var S=JSON.parse(localStorage.getItem('bb8')||'null')||{cc:{expense:[],income:[],investment:[]},data:{},goals:[],plans:{},catMeta:{},balances:{}};
 let now=new Date(),cY=now.getFullYear(),cM=now.getMonth();
 let txType='expense',txFilter='all',activeTab='overview',editGoalId=null,addGoalId=null;
@@ -1576,7 +1568,6 @@ function saveSnapshot(){
 function renderInvestTab(t){
   renderInvestSummaryBar(t);
   renderPortfolioCards();
-  renderInvest(t);
 }
 
 function renderInvestSummaryBar(t){
@@ -1585,8 +1576,10 @@ function renderInvestSummaryBar(t){
   const totalValue=portfolios.reduce((s,p)=>{const ls=latestSnapshot(p);return s+(ls?ls.value:0);},0);
   const gain=totalValue-totalInvested;
   const gainPct=totalInvested>0?Math.round((gain/totalInvested)*100):0;
-  const monthInv=t.filter(x=>x.type==='investment').reduce((s,x)=>s+x.amount,0);
-  const monthInvN=t.filter(x=>x.type==='investment').length;
+  // "Tento měsíc" = only real investment transactions (not goal/savings deposits)
+  const monthInvTxs=t.filter(x=>x.type==='investment'&&!x.goalId);
+  const monthInv=monthInvTxs.reduce((s,x)=>s+x.amount,0);
+  const monthInvN=monthInvTxs.length;
   const valuePct=totalInvested>0?Math.min(150,Math.round((totalValue/totalInvested)*100)):0;
   const g=id=>document.getElementById(id);
   if(!g('ivInvested'))return;
@@ -1727,7 +1720,7 @@ function render(){
     }
   }
 
-  if(activeTab==='overview'){ renderTxList(); renderGoalsMini(); renderInsights(t,income,expense,invest,rate); renderSavingsInsight(rate,income); renderSavingsTrend(); renderDonut('donutSvg2','donutLegend2',expense,t.filter(x=>x.type==='expense')); }
+  if(activeTab==='overview'){ renderTxList(); renderGoalsMini(); renderInsights(t,income,expense,invest,rate); renderSavingsTrend(); renderDonut('donutSvg2','donutLegend2',expense,t.filter(x=>x.type==='expense')); }
   if(activeTab==='budget')   renderBudget(t);
   if(activeTab==='goals')    { renderSavingsBar(); renderDefaultFunds(); renderGoalsList(t); renderGoalsInsights(); }
   if(activeTab==='invest')   renderInvestTab(t);
@@ -1777,10 +1770,14 @@ function renderInsights(t,income,expense,invest,rate){
 
 function renderSavingsTrend(){
   const months=[];
-  for(let i=4;i>=0;i--){let m=cM-i,y=cY;if(m<0){m+=12;y--;}const k=`${y}-${m}`,t=S.data[k]||[];const inc=t.filter(x=>x.type==='income').reduce((s,x)=>s+x.amount,0);const inv=t.filter(x=>x.type==='investment').reduce((s,x)=>s+x.amount,0);months.push({label:MS[m],rate:inc>0?Math.round((inv/inc)*100):0});}
+  for(let i=4;i>=0;i--){let m=cM-i,y=cY;if(m<0){m+=12;y--;}const k=`${y}-${m}`,t=S.data[k]||[];const inc=t.filter(x=>x.type==='income').reduce((s,x)=>s+x.amount,0);const inv=t.filter(x=>x.type==='investment').reduce((s,x)=>s+x.amount,0);months.push({label:MS[m],rate:inc>0?Math.round((inv/inc)*100):null});}
   const el=document.getElementById('savingsTrend');
-  const max=Math.max(...months.map(m=>m.rate),20);
-  el.innerHTML=months.map(m=>{const col=m.rate>=20?'var(--sage)':m.rate>=10?'var(--gold)':'var(--rose)';return '<div class="bc-row"><div class="bc-label">'+m.label+'</div><div class="bc-bars"><div class="bc-bar-wrap"><div class="bc-bar" style="width:'+Math.round((m.rate/max)*100)+'%;background:'+col+'"></div></div></div><div class="bc-val">'+m.rate+'%</div></div>';}).join('');
+  const max=Math.max(...months.filter(m=>m.rate!==null).map(m=>m.rate),20);
+  el.innerHTML=months.map(m=>{
+    if(m.rate===null) return '<div class="bc-row"><div class="bc-label" style="color:var(--border2)">'+m.label+'</div><div class="bc-bars"><div class="bc-bar-wrap"><div class="bc-bar" style="width:100%;background:var(--border)"></div></div></div><div class="bc-val" style="color:var(--border2)">—</div></div>';
+    const col=m.rate>=20?'var(--sage)':m.rate>=10?'var(--gold)':'var(--rose)';
+    return '<div class="bc-row"><div class="bc-label">'+m.label+'</div><div class="bc-bars"><div class="bc-bar-wrap"><div class="bc-bar" style="width:'+Math.round((m.rate/max)*100)+'%;background:'+col+'"></div></div></div><div class="bc-val">'+m.rate+'%</div></div>';
+  }).join('');
 }
 
 function renderGoalsMini(){
