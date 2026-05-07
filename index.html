@@ -449,6 +449,7 @@ input[type=date]{-webkit-appearance:none;appearance:none}
       <button onclick="changeMonth(-1)">&#8249;</button>
       <span class="month-label" id="monthLabel"></span>
       <button onclick="changeMonth(1)">&#8250;</button>
+      <button id="todayBtn" onclick="goToToday()" title="Přejít na aktuální měsíc" style="display:none;font-size:.65rem;padding:3px 8px;border-radius:20px;background:var(--rose-light);color:var(--rose);border:1px solid var(--rose-mid);font-family:'Jost',sans-serif;cursor:pointer;white-space:nowrap;transition:all .2s">Dnes</button>
     </div>
     <div class="header-user">
       <select id="currencyPicker" class="curr-pick" onchange="setCurrency(this.value)" title="Měna">
@@ -714,7 +715,7 @@ input[type=date]{-webkit-appearance:none;appearance:none}
     </div>
     <div class="fg"><label>Popis</label><input id="txName" type="text" placeholder="např. Nájem, Plat…" autocomplete="off"></div>
     <div class="form-row">
-      <div class="fg"><label>Částka (Kč)</label><input id="txAmount" type="number" placeholder="0" min="0" step="1"></div>
+      <div class="fg"><label id="txAmountLabel">Částka</label><input id="txAmount" type="number" placeholder="0" min="0" step="1"></div>
       <div class="fg"><label>Datum</label><input id="txDate" type="date"></div>
     </div>
     <div class="fg" id="catFg"><label>Kategorie</label><select id="txCat"></select></div>
@@ -1046,6 +1047,8 @@ function fmtK(n){
   const f=n>=1000?(n/1000).toFixed(n%1000===0?0:1)+'k':String(n);
   return c.pre?c.sym+f:f+' '+c.sym;
 }
+// Czech plural helper: plur(1,'položka','položky','položek')
+function plur(n,a,b,c){if(n===1)return n+' '+a;if(n>=2&&n<=4)return n+' '+b;return n+' '+c;}
 function allCats(t){ return [...DEF[t],...(S.cc[t]||[])]; }
 function icon(cat){ return cat.split(' ').pop()||'📦'; }
 function cname(cat){ return cat.split(' ').slice(0,-1).join(' ')||cat; }
@@ -1095,6 +1098,9 @@ function changeMonth(d){
     if(planHasData(inherited)){S.plans[ck()]=JSON.parse(JSON.stringify(inherited));save();}
   }
   render();
+}
+function goToToday(){
+  const n=new Date(); cY=n.getFullYear(); cM=n.getMonth(); render();
 }
 function switchTab(t){
   activeTab=t;
@@ -1158,6 +1164,8 @@ function openTxModal(){
   document.getElementById('txAmount').value='';
   document.getElementById('goalPickRow').style.display='none';
   document.getElementById('catFg').style.display='';
+  const lbl=document.getElementById('txAmountLabel');
+  if(lbl) lbl.textContent='Částka ('+curSym()+')';
   setKind('need');
   setTxType('expense');
   document.getElementById('overlayTx').classList.add('open');
@@ -1292,7 +1300,7 @@ function saveGoal(){
   if(editGoalId){
     if(g){
       if(!isDF){g.name=name;g.emoji=emoji;g.deadline=deadline;}
-      g.target=target; g.saved=saved;
+      g.target=target; g.saved=target>0?Math.min(saved,target):saved;
     }
     toast(isDF?g.emoji+' '+g.name+' upraven ✓':'Cíl upraven ✓','success');
   } else {
@@ -1303,7 +1311,8 @@ function saveGoal(){
 }
 function openAddGoalModal(id){
   addGoalId=id; const g=S.goals.find(g=>g.id===id); if(!g)return;
-  document.getElementById('addGoalInfo').innerHTML='<strong>'+g.emoji+' '+g.name+'</strong><br>Naspořeno: '+fmt(g.saved)+' z '+fmt(g.target);
+  const tgtTxt=g.target>0?'z '+fmt(g.target):'cíl není nastaven — nastav ho tlačítkem Upravit';
+  document.getElementById('addGoalInfo').innerHTML='<strong>'+g.emoji+' '+g.name+'</strong><br>Naspořeno: '+fmt(g.saved||0)+' '+tgtTxt;
   document.getElementById('addGoalAmt').value='';
   document.getElementById('overlayAddGoal').classList.add('open');
   setTimeout(()=>document.getElementById('addGoalAmt').focus(),80);
@@ -1312,7 +1321,10 @@ function confirmAddGoal(){
   const amt=parseFloat(document.getElementById('addGoalAmt').value);
   if(!amt||amt<=0){toast('Zadej částku','warn');return;}
   const g=S.goals.find(g=>g.id===addGoalId);
-  if(g){g.saved=Math.min(g.target,g.saved+amt);toast(fmt(amt)+' přidáno ✓','success');}
+  if(!g){toast('Cíl nenalezen','warn');return;}
+  if(!g.target){toast('Nejprve nastav cílovou částku ✏️','warn');return;}
+  g.saved=Math.min(g.target,g.saved+amt);
+  toast(fmt(amt)+' přidáno do '+g.emoji+' '+g.name+' ✓','success');
   save(); close2('overlayAddGoal'); render();
 }
 function deleteGoal(id){
@@ -1508,7 +1520,7 @@ function openPortfolioModal(id){
   document.getElementById('pfModalTitle').innerHTML=p?'Upravit <em>portfolio</em>':'Nové <em>portfolio</em>';
   document.getElementById('pfName').value=p?p.name:'';
   document.getElementById('pfEmoji').value=p?(p.emoji||'📈'):'📈';
-  document.getElementById('pfInvested').value=p&&p.invested?p.invested:'';
+  document.getElementById('pfInvested').value=p?(p.invested||0):'';
   document.getElementById('pfNote').value=p&&p.note?p.note:'';
   document.getElementById('overlayPortfolio').classList.add('open');
   setTimeout(()=>document.getElementById('pfName').focus(),80);
@@ -1534,8 +1546,12 @@ function deletePortfolio(id){
   const p=(S.portfolios||[]).find(p=>p.id===id);
   if(!p)return;
   if(!confirm('Opravdu smazat portfolio '+p.name+'? Všechny snímky hodnot budou ztraceny.'))return;
+  // Unlink investment transactions that referenced this portfolio
+  Object.values(S.data||{}).forEach(txs=>(txs||[]).forEach(tx=>{
+    if(tx.portfolioId===id){tx.portfolioId=null;tx.cat='Investice 📈';}
+  }));
   S.portfolios=S.portfolios.filter(p=>p.id!==id);
-  save(); toast('Portfolio smazáno'); render();
+  save(); toast('Portfolio '+p.emoji+' '+p.name+' smazáno'); render();
 }
 
 function openSnapshotModal(id){
@@ -1596,7 +1612,7 @@ function renderInvestSummaryBar(t){
   g('ivGainSub').textContent=totalInvested>0&&totalValue>0?(gainPct>=0?'+':'')+gainPct+' % celkem':'';
   g('ivMonth').textContent=monthInv>0?fmt(monthInv):'—';
   g('ivMonth').style.color=monthInv>0?'var(--gold)':'var(--muted)';
-  g('ivMonthSub').textContent=monthInvN>0?monthInvN+' transakc'+(monthInvN===1?'e':'í')+' · '+MONTHS[cM]:'žádné tento měsíc';
+  g('ivMonthSub').textContent=monthInvN>0?plur(monthInvN,'transakce','transakce','transakcí')+' · '+MONTHS[cM]:'žádné tento měsíc';
 }
 
 function renderPortfolioCards(){
@@ -1663,9 +1679,12 @@ function render(){
   document.getElementById('sExpense').textContent=fmt(expense);
   document.getElementById('sInvest').textContent=fmt(invest);
   document.getElementById('sBalance').textContent=fmt(monthNet);
-  document.getElementById('sIncomeC').textContent=t.filter(x=>x.type==='income').length+' položek';
-  document.getElementById('sExpenseC').textContent=t.filter(x=>x.type==='expense').length+' položek';
-  document.getElementById('sInvestC').textContent=t.filter(x=>x.type==='investment').length+' položek';
+  document.getElementById('sIncomeC').textContent=plur(t.filter(x=>x.type==='income').length,'položka','položky','položek');
+  document.getElementById('sExpenseC').textContent=plur(t.filter(x=>x.type==='expense').length,'položka','položky','položek');
+  document.getElementById('sInvestC').textContent=plur(t.filter(x=>x.type==='investment').length,'položka','položky','položek');
+  // Show "Dnes" button only when not in current month
+  const _now=new Date();const _todayBtn=document.getElementById('todayBtn');
+  if(_todayBtn) _todayBtn.style.display=(cY!==_now.getFullYear()||cM!==_now.getMonth())?'':'none';
   document.getElementById('sBalanceSub').textContent=income>0?(monthNet>=0?'✓ v plusu tento měsíc':'↓ deficit tento měsíc'):'Přidej příjmy a výdaje';
   document.getElementById('pExpense').style.width=(income>0?Math.min(100,(expense/income)*100):0)+'%';
   document.getElementById('pInvest').style.width=(income>0?Math.min(100,(invest/income)*100):0)+'%';
@@ -1687,7 +1706,7 @@ function render(){
   let h=0;
   if(income>0)h+=20; if(expense<income)h+=20;
   if(rate>=20)h+=25; else if(rate>=10)h+=12;
-  if(S.goals.length>0)h+=15; if(Object.keys(curLimits()).length>0)h+=10; if(monthNet>0)h+=10;
+  if((S.goals||[]).some(g=>!g.isDefault&&g.target>0))h+=15; if(Object.keys(curLimits()).length>0)h+=10; if(monthNet>0)h+=10;
   h=Math.min(100,h);
   const hc=h>=70?'var(--sage)':h>=40?'var(--gold)':'var(--rose)';
   const hm=h>=80?'💚 Výborné finanční zdraví!':h>=60?'🌿 Dobré — ještě trochu zapracovat':h>=40?'⚠️ Průměrné — nastav si plán':'🌸 Začni přidáním příjmů a cílů';
@@ -1735,7 +1754,7 @@ function renderTxList(){
     return '<div class="tx-item">'+
       '<div class="tx-icon" style="background:'+bg+'">'+icon(x.cat)+'</div>'+
       '<div class="tx-info"><div class="tx-name">'+x.name+'</div>'+
-      '<div class="tx-meta"><span>'+cname(x.cat)+'</span>'+(x.date?'<span>'+fmtDate(x.date)+'</span>':'')+'</div></div>'+
+      '<div class="tx-meta"><span>'+cname(x.cat)+'</span>'+(x.date?'<span>'+fmtDate(x.date)+'</span>':'')+(x.kind==='want'?'<span style="color:var(--mauve)">🎉</span>':x.kind==='need'?'<span style="color:var(--sage)">🏠</span>':'')+'</div></div>'+
       '<div class="tx-amount '+cls+'">'+pfx+fmt(x.amount)+'</div>'+
       '<div class="tx-actions">'+
         '<button class="tx-act-btn edit-btn" onclick="openEditTx('+x.id+')" title="Upravit">✏</button>'+
@@ -1744,15 +1763,6 @@ function renderTxList(){
   }).join('');
 }
 
-function renderSavingsInsight(rate,income){
-  const el=document.getElementById('savingsInsight');
-  if(!el)return;
-  if(income===0){el.innerHTML='';return;}
-  const h=rate>=20
-    ?{type:'good',icon:'🎉',msg:'Spoříš '+rate+' % příjmů — nad hranicí 20 %.'}
-    :{type:'warn',icon:'💰',msg:'Spoříš '+rate+' % — doporučená hranice je 20 %.'};
-  el.innerHTML='<div class="insight '+h.type+'" style="margin-bottom:0;font-size:.75rem"><span class="insight-icon">'+h.icon+'</span>'+h.msg+'</div>';
-}
 
 function renderInsights(t,income,expense,invest,rate){
   const el=document.getElementById('insightArea');
@@ -2132,16 +2142,6 @@ function render5030(inc,lim,incA,expTxs,invA){
 
 
 
-function renderInvest(t){
-  const el=document.getElementById('investChart');
-  if(!el)return;
-  const inv=t.filter(x=>x.type==='investment');
-  if(!inv.length){el.innerHTML='<div class="empty"><strong>📈</strong>Žádné investice v tomto měsíci.</div>';return;}
-  const gT=inv.filter(x=>x.goalId).reduce((s,x)=>s+x.amount,0);
-  const items=[...cmap(inv.filter(x=>!x.goalId)).map(([cat,val])=>({label:cname(cat),val,col:'var(--gold)',icon:icon(cat)})),...(gT>0?[{label:'Vklady do cílů',val:gT,col:'var(--mauve)',icon:'🎯'}]:[])].sort((a,b)=>b.val-a.val);
-  const max=items[0]?.val||1;
-  el.innerHTML=items.map(item=>'<div class="bc-row"><div class="bc-label">'+item.icon+' '+item.label+'</div><div class="bc-bars"><div class="bc-bar-wrap"><div class="bc-bar" style="width:'+Math.round((item.val/max)*100)+'%;background:'+item.col+'"></div></div></div><div class="bc-val">'+fmt(item.val)+'</div></div>').join('');
-}
 
 function renderSavingsBar(){
   const all=S.goals||[];
