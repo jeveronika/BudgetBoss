@@ -441,7 +441,7 @@ input[type=date]{-webkit-appearance:none;appearance:none}
 
 <header>
   <div class="header-top">
-    <div>
+    <div onclick="switchTab('overview')" title="Domů — Přehled" style="cursor:pointer;transition:opacity .18s" onmouseenter="this.style.opacity='.72'" onmouseleave="this.style.opacity='1'">
       <div class="brand-title">Budget <em>Queen</em></div>
       <div class="brand-sub">Přehled mých financí</div>
     </div>
@@ -449,7 +449,6 @@ input[type=date]{-webkit-appearance:none;appearance:none}
       <button onclick="changeMonth(-1)">&#8249;</button>
       <span class="month-label" id="monthLabel"></span>
       <button onclick="changeMonth(1)">&#8250;</button>
-      <button id="todayBtn" onclick="goToToday()" title="Přejít na aktuální měsíc" style="display:none;font-size:.65rem;padding:3px 8px;border-radius:20px;background:var(--rose-light);color:var(--rose);border:1px solid var(--rose-mid);font-family:'Jost',sans-serif;cursor:pointer;white-space:nowrap;transition:all .2s">Dnes</button>
     </div>
     <div class="header-user">
       <select id="currencyPicker" class="curr-pick" onchange="setCurrency(this.value)" title="Měna">
@@ -961,7 +960,7 @@ const DEF={
 
 var S=JSON.parse(localStorage.getItem('bb8')||'null')||{cc:{expense:[],income:[],investment:[]},data:{},goals:[],plans:{},catMeta:{},balances:{}};
 let now=new Date(),cY=now.getFullYear(),cM=now.getMonth();
-let txType='expense',txFilter='all',activeTab='overview',editGoalId=null,addGoalId=null;
+let txType='expense',txFilter='all',activeTab=localStorage.getItem('bb8_tab')||'overview',editGoalId=null,addGoalId=null;
 
 const k0=`${cY}-${cM}`;
 // Migrate old format
@@ -1099,11 +1098,10 @@ function changeMonth(d){
   }
   render();
 }
-function goToToday(){
-  const n=new Date(); cY=n.getFullYear(); cM=n.getMonth(); render();
-}
+
 function switchTab(t){
   activeTab=t;
+  localStorage.setItem('bb8_tab',t);
   ['overview','budget','goals','invest'].forEach(id=>{
     document.getElementById('tab-'+id).style.display=id===t?'':'none';
   });
@@ -1682,9 +1680,6 @@ function render(){
   document.getElementById('sIncomeC').textContent=plur(t.filter(x=>x.type==='income').length,'položka','položky','položek');
   document.getElementById('sExpenseC').textContent=plur(t.filter(x=>x.type==='expense').length,'položka','položky','položek');
   document.getElementById('sInvestC').textContent=plur(t.filter(x=>x.type==='investment').length,'položka','položky','položek');
-  // Show "Dnes" button only when not in current month
-  const _now=new Date();const _todayBtn=document.getElementById('todayBtn');
-  if(_todayBtn) _todayBtn.style.display=(cY!==_now.getFullYear()||cM!==_now.getMonth())?'':'none';
   document.getElementById('sBalanceSub').textContent=income>0?(monthNet>=0?'✓ v plusu tento měsíc':'↓ deficit tento měsíc'):'Přidej příjmy a výdaje';
   document.getElementById('pExpense').style.width=(income>0?Math.min(100,(expense/income)*100):0)+'%';
   document.getElementById('pInvest').style.width=(income>0?Math.min(100,(invest/income)*100):0)+'%';
@@ -2263,7 +2258,8 @@ function renderGoalsInsights(){
   el.innerHTML=h;
 }
 
-render();
+// Apply saved tab on first load (sets DOM visibility + active states + calls render)
+switchTab(activeTab);
 
 // Generate app icon for iOS home screen & Android PWA
 (function(){
