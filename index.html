@@ -459,6 +459,7 @@ input[type=date]{-webkit-appearance:none;appearance:none}
         <option value="GBP">£</option>
       </select>
       <span id="userInfo" style="font-size:.72rem;color:var(--muted);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+      <button id="btnReset" class="add-btn sec" style="display:none;color:var(--rose);border-color:var(--rose-mid)" title="Smazat veškerá data a začít znovu" onclick="resetAllData()">🗑 Reset</button>
       <button id="btnLogout" class="add-btn sec" style="display:none">Odhlásit</button>
     </div>
   </div>
@@ -903,6 +904,7 @@ input[type=date]{-webkit-appearance:none;appearance:none}
       loginScreen.style.display = 'none';
       appEl.style.display       = 'block';
       logoutBtn.style.display   = 'inline-flex';
+      document.getElementById('btnReset').style.display = 'inline-flex';
       userInfo.textContent      = '👤 ' + user.displayName;
 
       try {
@@ -925,9 +927,20 @@ input[type=date]{-webkit-appearance:none;appearance:none}
           window.render();
           window.toast('Vítej zpět, ' + user.displayName + '! ✓', 'success');
         } else {
-          // První přihlášení — ulož lokální data do cloudu
+          // První přihlášení — vždy začni čistým štítem (ignoruj localStorage)
+          const freshState = {
+            cc:{expense:[],income:[],investment:[]},
+            data:{},goals:[],plans:{},catMeta:{},balances:{},
+            ruleRatio:{n:50,w:30,s:20},
+            currency:'CZK',
+            portfolios:[]
+          };
+          window.S = freshState;
+          window.ensureDefaultFunds();
+          localStorage.setItem('bb8', JSON.stringify(window.S));
           await setDoc(doc(db, 'users', user.uid), { state: window.S });
-          window.toast('Účet vytvořen ✓', 'success');
+          window.render();
+          window.toast('Vítej, ' + user.displayName + '! Účet vytvořen ✓', 'success');
         }
       } catch(e) {
         console.error('Firestore chyba:', e);
@@ -942,10 +955,36 @@ input[type=date]{-webkit-appearance:none;appearance:none}
       loginScreen.style.display = 'flex';
       appEl.style.display       = 'none';
       logoutBtn.style.display   = 'none';
+      document.getElementById('btnReset').style.display = 'none';
       userInfo.textContent      = '';
       window.saveToCloud        = null;
     }
   });
+
+  window.resetAllData = async function() {
+    if (!confirm('⚠️ Smazat veškerá data?\n\nTato akce je nevratná — smažou se všechny transakce, cíle, plány, portfolia i nastavení. Opravdu chceš začít znovu?')) return;
+    if (!confirm('Jsi si naprosto jistá? Všechna data budou trvale smazána.')) return;
+    try {
+      const freshState = {
+        cc:{expense:[],income:[],investment:[]},
+        data:{},goals:[],plans:{},catMeta:{},balances:{},
+        ruleRatio:{n:50,w:30,s:20},
+        currency:'CZK',
+        portfolios:[]
+      };
+      window.S = freshState;
+      window.ensureDefaultFunds();
+      localStorage.setItem('bb8', JSON.stringify(window.S));
+      if (auth.currentUser) {
+        await setDoc(doc(db, 'users', auth.currentUser.uid), { state: window.S });
+      }
+      window.render();
+      window.toast('Všechna data smazána — začínáš znovu ✓', 'success');
+    } catch(e) {
+      console.error('Reset chyba:', e);
+      window.toast('Chyba při resetování: ' + (e.code || e.message), 'warn');
+    }
+  };
 </script>
 
 <script>
