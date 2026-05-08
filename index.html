@@ -441,7 +441,7 @@ input[type=date]{-webkit-appearance:none;appearance:none}
 
 <header>
   <div class="header-top">
-    <div onclick="switchTab('overview')" title="Domů — Přehled" style="cursor:pointer;transition:opacity .18s" onmouseenter="this.style.opacity='.72'" onmouseleave="this.style.opacity='1'">
+    <div onclick="goHome()" title="Domů — Přehled" style="cursor:pointer;transition:opacity .18s" onmouseenter="this.style.opacity='.72'" onmouseleave="this.style.opacity='1'">
       <div class="brand-title">Budget <em>Queen</em></div>
       <div class="brand-sub">Přehled mých financí</div>
     </div>
@@ -1139,6 +1139,12 @@ function changeMonth(d){
   render();
 }
 
+function goHome(){
+  const now=new Date();
+  cY=now.getFullYear();
+  cM=now.getMonth();
+  switchTab('overview');
+}
 function switchTab(t){
   activeTab=t;
   localStorage.setItem('bb8_tab',t);
