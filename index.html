@@ -950,6 +950,7 @@ input[type=date]{-webkit-appearance:none;appearance:none}
 
 <script>
 const MONTHS=['Leden','Únor','Březen','Duben','Květen','Červen','Červenec','Srpen','Září','Říjen','Listopad','Prosinec'];
+const MONTHS_GEN=['ledna','února','března','dubna','května','června','července','srpna','září','října','listopadu','prosince'];
 const MS=['Led','Úno','Bře','Dub','Kvě','Čer','Čvc','Srp','Zář','Říj','Lis','Pro'];
 const PAL=['#d4807a','#8aaa8e','#c9a96e','#b5788a','#89b4c4','#c4a4c4','#a4c4a8','#c4b4a0','#d4a090','#90b490'];
 const DEF={
@@ -1492,23 +1493,24 @@ function latestSnapshot(p){
 }
 
 function drawSparkline(snapshots,w,h){
-  w=w||110; h=h||36;
+  // w=0 → responsive full-width (width="100%" with viewBox)
+  const responsive=!w; const vbW=responsive?300:(w||110); h=h||36;
   const sorted=[...snapshots].sort((a,b)=>a.date<b.date?-1:1);
-  if(sorted.length<2) return '<div style="width:'+w+'px;height:'+h+'px;display:flex;align-items:center;justify-content:center;font-size:.63rem;color:var(--muted)">+snímek</div>';
+  if(sorted.length<2) return '';
   const vals=sorted.map(s=>s.value);
   const mn=Math.min(...vals),mx=Math.max(...vals),rng=mx-mn||1;
-  const xStep=w/(vals.length-1);
+  const xStep=vbW/(vals.length-1);
   const pts=vals.map((v,i)=>{const x=i*xStep,y=h-((v-mn)/rng)*(h-6)-3;return x.toFixed(1)+','+y.toFixed(1);}).join(' ');
   const trend=vals[vals.length-1]>=vals[0];
   const col=trend?'var(--sage)':'var(--rose)';
   const lx=((vals.length-1)*xStep).toFixed(1);
   const ly=(h-((vals[vals.length-1]-mn)/rng)*(h-6)-3).toFixed(1);
-  const fillCol=trend?'rgba(138,170,142,.15)':'rgba(212,128,122,.1)';
+  const fillCol=trend?'rgba(138,170,142,.18)':'rgba(212,128,122,.12)';
   const areapts='0,'+(h+2)+' '+pts+' '+lx+','+(h+2);
-  return '<svg width="'+w+'" height="'+h+'" viewBox="0 0 '+w+' '+h+'" style="overflow:visible;display:block">'+
+  return '<svg width="'+(responsive?'100%':vbW)+'" height="'+h+'" viewBox="0 0 '+vbW+' '+h+'" preserveAspectRatio="none" style="overflow:visible;display:block">'+
     '<polygon points="'+areapts+'" fill="'+fillCol+'"/>'+
-    '<polyline points="'+pts+'" fill="none" stroke="'+col+'" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>'+
-    '<circle cx="'+lx+'" cy="'+ly+'" r="2.5" fill="'+col+'"/>'+
+    '<polyline points="'+pts+'" fill="none" stroke="'+col+'" stroke-width="'+(responsive?1.4:1.8)+'" stroke-linejoin="round" stroke-linecap="round"/>'+
+    '<circle cx="'+lx+'" cy="'+ly+'" r="'+(responsive?3:2.5)+'" fill="'+col+'"/>'+
     '</svg>';
 }
 
@@ -1589,7 +1591,8 @@ function renderInvestSummaryBar(t){
   const totalInvested=portfolios.reduce((s,p)=>s+(p.invested||0),0);
   const totalValue=portfolios.reduce((s,p)=>{const ls=latestSnapshot(p);return s+(ls?ls.value:0);},0);
   const gain=totalValue-totalInvested;
-  const gainPct=totalInvested>0?Math.round((gain/totalInvested)*100):0;
+  const gainPctRaw=totalInvested>0?(gain/totalInvested)*100:0;
+  const gainPct=gainPctRaw; // kept as number; formatted below
   // "Tento měsíc" = only real investment transactions (not goal/savings deposits)
   const monthInvTxs=t.filter(x=>x.type==='investment'&&!x.goalId);
   const monthInv=monthInvTxs.reduce((s,x)=>s+x.amount,0);
@@ -1607,7 +1610,7 @@ function renderInvestSummaryBar(t){
   g('ivFill').style.background=gain>=0?'var(--sage)':'var(--rose)';
   g('ivGain').textContent=totalInvested>0&&totalValue>0?(gain>=0?'+':'')+fmt(gain):'—';
   g('ivGain').style.color=gain>=0?'var(--sage)':'var(--rose)';
-  g('ivGainSub').textContent=totalInvested>0&&totalValue>0?(gainPct>=0?'+':'')+gainPct+' % celkem':'';
+  g('ivGainSub').textContent=totalInvested>0&&totalValue>0?(gainPct>=0?'+':'')+gainPct.toFixed(2).replace('.',',')+' % celkem':'';
   g('ivMonth').textContent=monthInv>0?fmt(monthInv):'—';
   g('ivMonth').style.color=monthInv>0?'var(--gold)':'var(--muted)';
   g('ivMonthSub').textContent=monthInvN>0?plur(monthInvN,'transakce','transakce','transakcí')+' · '+MONTHS[cM]:'žádné tento měsíc';
@@ -1630,31 +1633,39 @@ function portfolioCard(p){
   const val=ls?ls.value:0;
   const invested=p.invested||0;
   const gain=ls?val-invested:0;
-  const gainPct=invested>0?Math.round((gain/invested)*100):0;
+  // Gain % with 2 decimal places
+  const gainPctRaw=invested>0?(gain/invested)*100:0;
+  const gainPctStr=ls&&invested?(gainPctRaw>=0?'+':'')+gainPctRaw.toFixed(2).replace('.',',')+' %':'—';
   const gainCol=gain>=0?'var(--sage)':'var(--rose)';
   const valPct=invested>0?Math.min(100,Math.round((val/invested)*100)):0;
+  // Dates: last snapshot for "Aktualizováno", first snapshot for "Založeno"
   const updDate=ls?new Date(ls.date+' 12:00'):null;
-  const updStr=updDate?updDate.getDate()+'. '+MONTHS[updDate.getMonth()]+' '+updDate.getFullYear():'';
-  const spark=snapshots.length>=2?drawSparkline(snapshots,110,38):'';
+  const updStr=updDate?updDate.getDate()+'. '+MONTHS_GEN[updDate.getMonth()]+' '+updDate.getFullYear():'';
+  const firstDate=snapshots.length>1?new Date(snapshots[0].date+' 12:00'):null;
+  const foundedStr=firstDate?MONTHS[firstDate.getMonth()]+' '+firstDate.getFullYear():'';
+  const dateStr=updStr
+    ?(foundedStr?'Založeno: '+foundedStr+' · Aktualizováno: '+updStr:'Aktualizováno: '+updStr)
+    :'';
+  // Full-width sparkline (w=0 → responsive)
+  const spark=snapshots.length>=2?drawSparkline(snapshots,0,52):'';
   return '<div class="pf-card">'+
-    '<div class="pf-header">'+
+    // Header: name + note only
+    '<div class="pf-header" style="margin-bottom:'+(spark?'10px':'11px')+'">'+
       '<div class="pf-name">'+p.emoji+' '+p.name+
         (p.note?'<div style="font-size:.63rem;font-weight:400;font-family:Jost,sans-serif;color:var(--muted);margin-top:2px">'+p.note+'</div>':'')+
       '</div>'+
-      '<div class="pf-sparkline">'+spark+'</div>'+
     '</div>'+
+    // Full-width sparkline row
+    (spark?'<div style="margin:0 0 12px;border-radius:8px;overflow:hidden;background:var(--bg2);padding:6px 0 2px">'+spark+'</div>':'')+
     '<div class="pf-metrics">'+
       '<div class="pf-metric"><div class="pf-m-lbl">Vloženo</div><div class="pf-m-val">'+( invested?fmt(invested):'—')+'</div></div>'+
       '<div class="pf-metric"><div class="pf-m-lbl">Hodnota</div><div class="pf-m-val" style="color:'+(val?gainCol:'var(--muted)')+'">'+( val?fmt(val):'—')+'</div></div>'+
-      '<div class="pf-metric"><div class="pf-m-lbl">Výnos</div><div class="pf-m-val" style="color:'+(ls&&invested?gainCol:'var(--muted)')+'">'+
-        (ls&&invested?(gainPct>=0?'+':'')+gainPct+' %':'—')+'</div></div>'+
+      '<div class="pf-metric"><div class="pf-m-lbl">Výnos</div><div class="pf-m-val" style="color:'+(ls&&invested?gainCol:'var(--muted)')+'">'+gainPctStr+'</div></div>'+
     '</div>'+
     (ls&&invested
       ?'<div class="pf-prog"><div class="pf-prog-fill" style="width:'+valPct+'%;background:'+gainCol+'"></div></div>'
       :'<div style="height:4px;margin-bottom:7px"></div>')+
-    (updStr
-      ?'<div class="pf-date">📅 Aktualizováno: '+updStr+(snapshots.length>1?' · '+snapshots.length+' snímků':'')+'</div>'
-      :'<div class="pf-date" style="color:var(--gold)">⚡ Přidej hodnotu pro sledování vývoje</div>')+
+    '<div class="pf-date">'+(dateStr?'📅 '+dateStr:'<span style="color:var(--gold)">⚡ Přidej hodnotu pro sledování vývoje</span>')+'</div>'+
     '<div class="pf-acts">'+
       '<button class="gbtn" onclick="openSnapshotModal('+p.id+')">📊 Přidat hodnotu</button>'+
       '<button class="gbtn" onclick="openPortfolioModal('+p.id+')">✏️ Upravit</button>'+
