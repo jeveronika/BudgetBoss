@@ -1631,9 +1631,9 @@ function renderDefaultFunds(){
   const peaceHint=refIncome
     ?'Doporučeno: '+fmt(refIncome)+(incVals.length?' ('+incLabel+')':'')+' = 1× měsíční příjem'
     :'Nastav = 1× tvůj měsíční příjem';
-  const reserveHint=refExp
-    ?'Doporučeno: '+fmt(refExp*3)+' – '+fmt(refExp*6)+(expVals.length?' ('+expLabel+')':'')+' = 3–6× výdaje'
-    :'Nastav = 3–6× tvoje měsíční výdaje';
+  const reserveHint=refIncome
+    ?'Doporučeno: '+fmt(refIncome*3)+' – '+fmt(refIncome*6)+(incVals.length?' ('+incLabel+')':'')+' = 3–6× měsíční příjem'
+    :'Nastav = 3–6× tvůj měsíční příjem';
   el.innerHTML=
     fCard(peace,'var(--sage)','Okamžitá záloha — rozbité spotřebiče, neplánované výdaje. Tento fond je k čerpání.',peaceHint)+
     fCard(reserve,'var(--mauve)','Pevná rezerva — přežití 3–6 měsíců bez příjmu. Nesahat, pokud to není opravdu nutné.',reserveHint);
