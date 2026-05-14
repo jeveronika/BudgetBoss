@@ -964,8 +964,10 @@ input[type=date]{-webkit-appearance:none;appearance:none}
         console.error('Login error:', err.code, err.message);
         window.toast('Chyba přihlášení: ' + err.code, 'warn');
       }));
-  document.getElementById('btnLogout').addEventListener('click', () =>
-    signOut(auth));
+  document.getElementById('btnLogout').addEventListener('click', () => {
+    localStorage.removeItem('bb8_user');
+    signOut(auth);
+  });
 
   onAuthStateChanged(auth, async user => {
     const loginScreen   = document.getElementById('loginScreen');
@@ -1017,6 +1019,9 @@ input[type=date]{-webkit-appearance:none;appearance:none}
         window.toast('Chyba načítání dat: ' + (e.code || e.message), 'warn');
       }
 
+      // Ulož user info pro offline přístup
+      localStorage.setItem('bb8_user', JSON.stringify({displayName: user.displayName, uid: user.uid}));
+
       // Data načtena (nebo chyba) — skryj loading, zobraz dashboard
       loadingScreen.style.display = 'none';
       appEl.style.display         = 'block';
@@ -1035,13 +1040,40 @@ input[type=date]{-webkit-appearance:none;appearance:none}
         setDoc(doc(db, 'users', user.uid), { state: window.S });
 
     } else {
-      // Skryj vše, zobraz login
-      loadingScreen.style.display = 'none';
-      loginScreen.style.display   = 'flex';
-      appEl.style.display         = 'none';
-      document.getElementById('userMenuBtn').style.display = 'none';
-      closeUserMenu();
-      window.saveToCloud = null;
+      // Zkontroluj offline režim — máme uloženého usera a data?
+      const cachedUser = JSON.parse(localStorage.getItem('bb8_user') || 'null');
+      const hasLocalData = !!localStorage.getItem('bb8');
+
+      if (!navigator.onLine && cachedUser && hasLocalData) {
+        // OFFLINE REŽIM: zobraz dashboard z localStorage, nepřihlašuj přes Firebase
+        loadingScreen.style.display = 'none';
+        appEl.style.display         = 'block';
+        const name = cachedUser.displayName || '';
+        const initials = name.split(' ').filter(Boolean).map(w=>w[0]).join('').slice(0,2).toUpperCase() || '?';
+        document.getElementById('userMenuBtn').style.display = 'flex';
+        document.getElementById('userInfo').textContent      = name.split(' ')[0];
+        document.getElementById('userInitials').textContent  = initials;
+        document.getElementById('udAvatarLg').textContent    = initials;
+        document.getElementById('udName').textContent        = name + ' · offline';
+        window.saveToCloud = null; // nelze ukládat do cloudu
+        window.render();
+        window.toast('Offline režim — data z posledního přihlášení 📴', 'info');
+
+        // Jakmile se internet vrátí, automaticky znovu načti a přihlas
+        window.addEventListener('online', () => {
+          window.toast('Připojení obnoveno — přihlašuji… 🌐', 'success');
+          setTimeout(() => location.reload(), 1200);
+        }, { once: true });
+
+      } else {
+        // Standardní odhlášení — zobraz login screen
+        loadingScreen.style.display = 'none';
+        loginScreen.style.display   = 'flex';
+        appEl.style.display         = 'none';
+        document.getElementById('userMenuBtn').style.display = 'none';
+        closeUserMenu();
+        window.saveToCloud = null;
+      }
     }
   });
 
@@ -1060,6 +1092,7 @@ input[type=date]{-webkit-appearance:none;appearance:none}
       window.S = freshState;
       window.ensureDefaultFunds();
       localStorage.setItem('bb8', JSON.stringify(window.S));
+      localStorage.removeItem('bb8_user'); // vymaž offline user cache
       if (auth.currentUser) {
         await setDoc(doc(db, 'users', auth.currentUser.uid), { state: window.S });
       }
