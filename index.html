@@ -485,6 +485,8 @@ input[type=date]{-webkit-appearance:none;appearance:none}
   <button class="tab-btn" onclick="switchTab('invest')">📈 Investice</button>
 </div>
 
+<div id="onboardingArea"></div>
+
 <!-- Health bar -->
 <div class="health-bar">
   <div class="hs-health">
@@ -528,7 +530,6 @@ input[type=date]{-webkit-appearance:none;appearance:none}
 
 <!-- OVERVIEW -->
 <div id="tab-overview">
-  <div id="onboardingArea"></div>
   <div id="insightArea"></div>
   <div class="overview-cols">
     <div class="panel ov-tx">
@@ -1752,7 +1753,7 @@ function portfolioCard(p){
 function renderOnboarding(){
   const el=document.getElementById('onboardingArea');
   if(!el)return;
-  if(localStorage.getItem('bb8_welcomed')){el.innerHTML='';return;}
+  if(activeTab!=='overview'||localStorage.getItem('bb8_welcomed')){el.innerHTML='';return;}
   const t=txs();
   const hasIncome =t.some(x=>x.type==='income');
   const hasExpense=t.some(x=>x.type==='expense');
@@ -1786,7 +1787,7 @@ function renderOnboarding(){
       '</div>'+
       step(hasIncome,'1','Přidej příjem','Zaznamenej, kolik jsi tento měsíc vydělala — základ pro všechny výpočty.',"openTxModal();setTimeout(function(){setTxType('income')},60)",'+ Přidat příjem')+
       step(hasExpense,'2','Přidej výdaj','Co jsi tento měsíc utratila? Přidej alespoň jeden výdaj.',"openTxModal()",'+ Přidat výdaj')+
-      step(hasGoal,'3','Nastav si cíl','Na co šetříš? Dovolená, auto, nebo jen finanční polštář.',"switchTab('goals');setTimeout(openGoalModal,80)",'🎯 Přidat cíl')+
+      step(hasGoal,'3','Nastav si cíl','Na co šetříš? Dovolená, auto, nebo jen finanční polštář.',"switchTab('goals')",'🎯 Jít na cíle')+
     '</div>';
 }
 function dismissOnboarding(){
@@ -1865,7 +1866,8 @@ function render(){
     }
   }
 
-  if(activeTab==='overview'){ renderOnboarding(); renderTxList(); renderGoalsMini(); renderInsights(t,income,expense,invest,rate); renderSavingsTrend(); renderDonut('donutSvg2','donutLegend2',expense,t.filter(x=>x.type==='expense')); }
+  renderOnboarding();
+  if(activeTab==='overview'){ renderTxList(); renderGoalsMini(); renderInsights(t,income,expense,invest,rate); renderSavingsTrend(); renderDonut('donutSvg2','donutLegend2',expense,t.filter(x=>x.type==='expense')); }
   if(activeTab==='budget')   renderBudget(t);
   if(activeTab==='goals')    { renderSavingsBar(); renderDefaultFunds(); renderGoalsList(t); renderGoalsInsights(); }
   if(activeTab==='invest')   renderInvestTab(t);
