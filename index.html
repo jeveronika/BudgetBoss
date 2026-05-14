@@ -44,6 +44,7 @@ header{display:flex;flex-direction:column;margin-bottom:20px}
 
 /* Health bar */
 .health-bar{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:13px 20px;margin-bottom:18px;display:flex;align-items:center;gap:18px;box-shadow:var(--shadow);flex-wrap:wrap}
+body.onboarding-active .health-bar,body.onboarding-active .summary{display:none}
 .hs-item{display:flex;flex-direction:column;align-items:center;min-width:55px}
 .hs-val{font-family:'Cormorant Garamond',serif;font-size:1.25rem;font-weight:600;line-height:1}
 .hs-lbl{font-size:.6rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-top:2px}
@@ -1753,13 +1754,14 @@ function portfolioCard(p){
 function renderOnboarding(){
   const el=document.getElementById('onboardingArea');
   if(!el)return;
-  if(activeTab!=='overview'||localStorage.getItem('bb8_welcomed')){el.innerHTML='';return;}
+  if(activeTab!=='overview'||localStorage.getItem('bb8_welcomed')){el.innerHTML='';document.body.classList.remove('onboarding-active');return;}
   const t=txs();
   const hasIncome =t.some(x=>x.type==='income');
   const hasExpense=t.some(x=>x.type==='expense');
   const hasGoal   =(S.goals||[]).some(g=>!g.isDefault&&g.target>0);
   // Auto-dismiss when all 3 done
-  if(hasIncome&&hasExpense&&hasGoal){localStorage.setItem('bb8_welcomed','1');el.innerHTML='';return;}
+  if(hasIncome&&hasExpense&&hasGoal){localStorage.setItem('bb8_welcomed','1');el.innerHTML='';document.body.classList.remove('onboarding-active');return;}
+  document.body.classList.add('onboarding-active');
   const done=[hasIncome,hasExpense,hasGoal].filter(Boolean).length;
   function step(ok,num,title,desc,action,btnLabel){
     return '<div style="display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:1px solid rgba(180,100,80,.12)">'+
@@ -1792,6 +1794,7 @@ function renderOnboarding(){
 }
 function dismissOnboarding(){
   localStorage.setItem('bb8_welcomed','1');
+  document.body.classList.remove('onboarding-active');
   const el=document.getElementById('onboardingArea');
   if(el) el.innerHTML='';
 }
