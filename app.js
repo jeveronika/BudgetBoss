@@ -212,6 +212,27 @@ document.addEventListener('click',function(e){
   const wrap=document.getElementById('userMenuBtn')?.closest('.header-user');
   if(wrap&&!wrap.contains(e.target)) closeUserMenu();
 });
+// ── GDPR SOUHLAS ──
+function toggleLoginBtn(){
+  const check=document.getElementById('gdprCheck');
+  const btn=document.getElementById('btnLogin');
+  if(!check||!btn)return;
+  btn.disabled=!check.checked;
+  if(check.checked)localStorage.setItem('bb8_gdpr','1');
+}
+function showPrivacyModal(){
+  document.getElementById('overlayPrivacy').style.display='flex';
+}
+// Pokud uživatel již dříve souhlasil, auto-zaškrtni checkbox
+(function initGdpr(){
+  if(localStorage.getItem('bb8_gdpr')){
+    const check=document.getElementById('gdprCheck');
+    const btn=document.getElementById('btnLogin');
+    if(check)check.checked=true;
+    if(btn)btn.disabled=false;
+  }
+})();
+
 function exportCSV(){
   const k=ck(), t=S.data[k]||[];
   if(!t.length){toast('Žádné transakce k exportu','warn');return;}
