@@ -89,6 +89,30 @@ body.onboarding-active .health-bar,body.onboarding-active .summary{display:none}
 .curr-pick{background:none;border:1px solid var(--border2);border-radius:50px;padding:5px 10px;font-family:'Jost',sans-serif;font-size:.72rem;color:var(--muted);cursor:pointer;transition:all .2s;outline:none;-webkit-appearance:none;appearance:none}
 .curr-pick:hover,.curr-pick:focus{border-color:var(--rose-mid);color:var(--rose);background:var(--rose-light)}
 
+/* User menu */
+.user-menu-btn{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border);border-radius:50px;padding:5px 13px 5px 5px;cursor:pointer;transition:all .2s;font-family:'Jost',sans-serif}
+.user-menu-btn:hover{border-color:var(--rose-mid);background:var(--rose-light)}
+.user-initials{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--rose),var(--mauve));color:#fff;font-size:.68rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;letter-spacing:.5px}
+.user-menu-name{font-size:.75rem;color:var(--text2);max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.user-menu-chevron{font-size:.52rem;color:var(--muted);margin-left:1px;transition:transform .2s;display:inline-block}
+.user-menu-btn.open .user-menu-chevron{transform:rotate(180deg)}
+.user-dropdown{display:none;position:absolute;top:calc(100% + 10px);right:0;background:var(--surface);border:1px solid var(--border);border-radius:18px;box-shadow:0 8px 32px rgba(0,0,0,.13),0 2px 8px rgba(0,0,0,.06);width:248px;z-index:500;overflow:hidden;animation:ud-in .15s ease}
+@keyframes ud-in{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+.user-dropdown.open{display:block}
+.ud-profile{display:flex;align-items:center;gap:13px;padding:16px}
+.ud-avatar-lg{width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,var(--rose),var(--mauve));color:#fff;font-size:.95rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.ud-name{font-size:.85rem;font-weight:600;color:var(--text);line-height:1.35}
+.ud-sep{height:1px;background:var(--border);margin:0}
+.ud-label{font-size:.59rem;text-transform:uppercase;letter-spacing:1.3px;color:var(--muted);padding:10px 16px 6px;font-weight:600}
+.ud-currencies{display:flex;gap:5px;padding:0 16px 12px;flex-wrap:wrap}
+.ud-cur-btn{background:none;border:1px solid var(--border2);border-radius:20px;padding:3px 11px;font-size:.72rem;font-family:'Jost',sans-serif;color:var(--text2);cursor:pointer;transition:all .15s}
+.ud-cur-btn:hover{border-color:var(--rose-mid);color:var(--rose);background:var(--rose-light)}
+.ud-cur-btn.active{background:var(--rose);border-color:var(--rose);color:#fff}
+.ud-item{display:flex;align-items:center;gap:10px;width:100%;background:none;border:none;padding:11px 16px;font-family:'Jost',sans-serif;font-size:.8rem;color:var(--text2);cursor:pointer;text-align:left;transition:background .15s;line-height:1}
+.ud-item:hover{background:var(--bg2);color:var(--text)}
+.ud-item.danger{color:var(--rose)}
+.ud-item.danger:hover{background:var(--rose-light)}
+
 /* FAB */
 .fab{position:fixed;bottom:26px;right:26px;width:54px;height:54px;background:linear-gradient(135deg,var(--rose),var(--mauve));border:none;border-radius:50%;color:#fff;font-size:1.6rem;cursor:pointer;box-shadow:0 4px 20px rgba(180,100,80,.4);transition:all .25s;z-index:100;display:flex;align-items:center;justify-content:center}
 .fab:hover{transform:scale(1.1) rotate(45deg);box-shadow:0 6px 28px rgba(180,100,80,.5)}
@@ -463,17 +487,37 @@ input[type=date]{-webkit-appearance:none;appearance:none}
       <span class="month-label" id="monthLabel"></span>
       <button onclick="changeMonth(1)">&#8250;</button>
     </div>
-    <div class="header-user">
-      <select id="currencyPicker" class="curr-pick" onchange="setCurrency(this.value)" title="Měna">
-        <option value="CZK">Kč</option>
-        <option value="EUR">€</option>
-        <option value="PLN">zł</option>
-        <option value="USD">$</option>
-        <option value="GBP">£</option>
+    <div class="header-user" style="position:relative">
+      <select id="currencyPicker" style="display:none" onchange="setCurrency(this.value)">
+        <option value="CZK">Kč</option><option value="EUR">€</option>
+        <option value="PLN">zł</option><option value="USD">$</option><option value="GBP">£</option>
       </select>
-      <span id="userInfo" style="font-size:.72rem;color:var(--muted);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
-      <button id="btnReset" class="add-btn sec" style="display:none;color:var(--rose);border-color:var(--rose-mid)" title="Smazat veškerá data a začít znovu" onclick="resetAllData()">🗑 Reset</button>
-      <button id="btnLogout" class="add-btn sec" style="display:none">Odhlásit</button>
+      <button class="user-menu-btn" id="userMenuBtn" style="display:none" onclick="toggleUserMenu()">
+        <span class="user-initials" id="userInitials">?</span>
+        <span class="user-menu-name" id="userInfo"></span>
+        <span class="user-menu-chevron">▾</span>
+      </button>
+      <div class="user-dropdown" id="userDropdown">
+        <div class="ud-profile">
+          <div class="ud-avatar-lg" id="udAvatarLg"></div>
+          <div class="ud-name" id="udName"></div>
+        </div>
+        <div class="ud-sep"></div>
+        <div class="ud-label">Měna</div>
+        <div class="ud-currencies">
+          <button class="ud-cur-btn" data-cur="CZK" onclick="setCurrency('CZK');syncCurrencyPicker()">Kč</button>
+          <button class="ud-cur-btn" data-cur="EUR" onclick="setCurrency('EUR');syncCurrencyPicker()">€</button>
+          <button class="ud-cur-btn" data-cur="USD" onclick="setCurrency('USD');syncCurrencyPicker()">$</button>
+          <button class="ud-cur-btn" data-cur="GBP" onclick="setCurrency('GBP');syncCurrencyPicker()">£</button>
+          <button class="ud-cur-btn" data-cur="PLN" onclick="setCurrency('PLN');syncCurrencyPicker()">zł</button>
+        </div>
+        <div class="ud-sep"></div>
+        <button class="ud-item" onclick="exportCSV();closeUserMenu()">📥 Exportovat data (CSV)</button>
+        <div class="ud-sep"></div>
+        <button class="ud-item danger" onclick="closeUserMenu();resetAllData()">🗑 Smazat všechna data</button>
+        <div class="ud-sep"></div>
+        <button class="ud-item" id="btnLogout">↩ Odhlásit se</button>
+      </div>
     </div>
   </div>
 </header>
@@ -975,9 +1019,13 @@ input[type=date]{-webkit-appearance:none;appearance:none}
       // Data načtena (nebo chyba) — skryj loading, zobraz dashboard
       loadingScreen.style.display = 'none';
       appEl.style.display         = 'block';
-      logoutBtn.style.display     = 'inline-flex';
-      document.getElementById('btnReset').style.display = 'inline-flex';
-      userInfo.textContent        = '👤 ' + user.displayName;
+      const name=user.displayName||'';
+      const initials=name.split(' ').filter(Boolean).map(w=>w[0]).join('').slice(0,2).toUpperCase()||'?';
+      document.getElementById('userMenuBtn').style.display = 'flex';
+      document.getElementById('userInfo').textContent      = name.split(' ')[0];
+      document.getElementById('userInitials').textContent  = initials;
+      document.getElementById('udAvatarLg').textContent    = initials;
+      document.getElementById('udName').textContent        = name;
       window.render();
       if (window.S.data && Object.keys(window.S.data).length)
         window.toast('Vítej zpět, ' + user.displayName + '! ✓', 'success');
@@ -990,10 +1038,9 @@ input[type=date]{-webkit-appearance:none;appearance:none}
       loadingScreen.style.display = 'none';
       loginScreen.style.display   = 'flex';
       appEl.style.display         = 'none';
-      logoutBtn.style.display     = 'none';
-      document.getElementById('btnReset').style.display = 'none';
-      userInfo.textContent        = '';
-      window.saveToCloud          = null;
+      document.getElementById('userMenuBtn').style.display = 'none';
+      closeUserMenu();
+      window.saveToCloud = null;
     }
   });
 
@@ -1174,6 +1221,39 @@ function setCurrency(c){
 function syncCurrencyPicker(){
   const el=document.getElementById('currencyPicker');
   if(el) el.value=S.currency||'CZK';
+  document.querySelectorAll('.ud-cur-btn').forEach(btn=>{
+    btn.classList.toggle('active',btn.dataset.cur===(S.currency||'CZK'));
+  });
+}
+function toggleUserMenu(){
+  const btn=document.getElementById('userMenuBtn');
+  const dd=document.getElementById('userDropdown');
+  btn.classList.toggle('open');
+  dd.classList.toggle('open');
+}
+function closeUserMenu(){
+  document.getElementById('userMenuBtn')?.classList.remove('open');
+  document.getElementById('userDropdown')?.classList.remove('open');
+}
+document.addEventListener('click',function(e){
+  const wrap=document.getElementById('userMenuBtn')?.closest('.header-user');
+  if(wrap&&!wrap.contains(e.target)) closeUserMenu();
+});
+function exportCSV(){
+  const k=ck(), t=S.data[k]||[];
+  if(!t.length){toast('Žádné transakce k exportu','warn');return;}
+  const rows=[['Datum','Popis','Kategorie','Typ','Částka ('+curSym()+')']];
+  [...t].sort((a,b)=>a.date<b.date?-1:1).forEach(x=>{
+    rows.push([x.date||'',x.name,cname(x.cat),
+      x.type==='income'?'Příjem':x.type==='investment'?'Investice':'Výdaj',x.amount]);
+  });
+  const csv=rows.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\n');
+  const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download='budget-queen-'+MONTHS[cM]+'-'+cY+'.csv';
+  a.click(); URL.revokeObjectURL(url);
+  toast('CSV staženo ✓','success');
 }
 function changeMonth(d){
   cM+=d; if(cM>11){cM=0;cY++;}if(cM<0){cM=11;cY--;}
@@ -1897,10 +1977,14 @@ function renderOnboarding(){
   const el=document.getElementById('onboardingArea');
   if(!el)return;
   if(activeTab!=='overview'||localStorage.getItem('bb8_welcomed')){el.innerHTML='';document.body.classList.remove('onboarding-active');return;}
+  // Zajetý uživatel: data ve více měsících → automaticky přeskočit
+  const monthsWithData=Object.keys(S.data).filter(k=>(S.data[k]||[]).length>0).length;
+  if(monthsWithData>1){localStorage.setItem('bb8_welcomed','1');el.innerHTML='';document.body.classList.remove('onboarding-active');return;}
   const t=txs();
   const hasIncome =t.some(x=>x.type==='income');
   const hasExpense=t.some(x=>x.type==='expense');
-  const hasGoal   =(S.goals||[]).some(g=>!g.isDefault&&g.target>0);
+  // Cíl = vlastní goal NEBO investiční transakce (kdo investuje, šetří)
+  const hasGoal=(S.goals||[]).some(g=>!g.isDefault&&g.target>0)||t.some(x=>x.type==='investment');
   // Auto-dismiss when all 3 done
   if(hasIncome&&hasExpense&&hasGoal){localStorage.setItem('bb8_welcomed','1');el.innerHTML='';document.body.classList.remove('onboarding-active');return;}
   document.body.classList.add('onboarding-active');
