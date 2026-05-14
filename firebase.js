@@ -28,37 +28,53 @@
     signOut(auth);
   });
 
+  // Bezpečné volání window funkcí — odolné vůči selhání app.js
+  const safeToast = (msg, type) => { try { if (typeof window.toast === 'function') window.toast(msg, type); } catch(_){} };
+  const safeRender = () => { try { if (typeof window.render === 'function') window.render(); } catch(_){} };
+  const safeEnsureFunds = () => { try { if (typeof window.ensureDefaultFunds === 'function') window.ensureDefaultFunds(); } catch(_){} };
+
   onAuthStateChanged(auth, async user => {
     const loginScreen   = document.getElementById('loginScreen');
     const loadingScreen = document.getElementById('loadingScreen');
     const appEl         = document.querySelector('.app');
-    const logoutBtn     = document.getElementById('btnLogout');
-    const userInfo      = document.getElementById('userInfo');
+
+    // Pomocná funkce — vždy skryje loading a zobrazí dashboard
+    function showApp(name) {
+      loadingScreen.style.display = 'none';
+      appEl.style.display         = 'block';
+      const initials = name.split(' ').filter(Boolean).map(w=>w[0]).join('').slice(0,2).toUpperCase() || '?';
+      document.getElementById('userMenuBtn').style.display = 'flex';
+      document.getElementById('userInfo').textContent      = name.split(' ')[0];
+      document.getElementById('userInitials').textContent  = initials;
+      document.getElementById('udAvatarLg').textContent    = initials;
+      document.getElementById('udName').textContent        = name;
+    }
 
     if (user) {
-      // Skryj login, zobraz loading spinner
       loginScreen.style.display   = 'none';
       loadingScreen.style.display = 'flex';
 
       try {
         const snap = await getDoc(doc(db, 'users', user.uid));
+
         if (snap.exists()) {
           const cs = snap.data().state;
-          // Explicitní nahrazení každého pole (Object.assign nepokryje prázdná pole)
-          if (cs.cc)                        window.S.cc         = cs.cc;
-          if (cs.data)                      window.S.data       = cs.data;
-          if (Array.isArray(cs.goals))      window.S.goals      = cs.goals;
-          if (cs.plans)                     window.S.plans      = cs.plans;
-          if (cs.catMeta)                   window.S.catMeta    = cs.catMeta;
-          if (cs.ruleRatio)                 window.S.ruleRatio  = cs.ruleRatio;
-          if (cs.currency)                  window.S.currency   = cs.currency;
-          if (Array.isArray(cs.portfolios)) window.S.portfolios = cs.portfolios;
-          if (Array.isArray(cs.recurring)) window.S.recurring  = cs.recurring;
-          // Synchronizuj localStorage s daty z cloudu
-          localStorage.setItem('bb8', JSON.stringify(window.S));
-          window.ensureDefaultFunds();
+          // Bezpečné přiřazení — window.S nemusí existovat pokud app.js selhal
+          if (window.S && typeof window.S === 'object') {
+            if (cs.cc)                        window.S.cc         = cs.cc;
+            if (cs.data)                      window.S.data       = cs.data;
+            if (Array.isArray(cs.goals))      window.S.goals      = cs.goals;
+            if (cs.plans)                     window.S.plans      = cs.plans;
+            if (cs.catMeta)                   window.S.catMeta    = cs.catMeta;
+            if (cs.ruleRatio)                 window.S.ruleRatio  = cs.ruleRatio;
+            if (cs.currency)                  window.S.currency   = cs.currency;
+            if (Array.isArray(cs.portfolios)) window.S.portfolios = cs.portfolios;
+            if (Array.isArray(cs.recurring))  window.S.recurring  = cs.recurring;
+            localStorage.setItem('bb8', JSON.stringify(window.S));
+          }
+          safeEnsureFunds();
         } else {
-          // První přihlášení — vždy začni čistým štítem (ignoruj localStorage)
+          // První přihlášení — čistý stav
           const freshState = {
             cc:{expense:[],income:[],investment:[]},
             data:{},goals:[],plans:{},catMeta:{},
@@ -68,69 +84,46 @@
             recurring:[]
           };
           window.S = freshState;
-          window.ensureDefaultFunds();
+          safeEnsureFunds();
           localStorage.setItem('bb8', JSON.stringify(window.S));
           await setDoc(doc(db, 'users', user.uid), { state: window.S });
-          window.toast('Vítej, ' + user.displayName + '! Účet vytvořen ✓', 'success');
+          safeToast('Vítej, ' + user.displayName + '! Účet vytvořen ✓', 'success');
         }
       } catch(e) {
         console.error('Firestore chyba:', e);
-        window.toast('Chyba načítání dat: ' + (e.code || e.message), 'warn');
+        safeToast('Chyba načítání dat: ' + (e.code || e.message), 'warn');
+      } finally {
+        // VŽDY skryj loading — i při pádu app.js nebo Firestore chybě
+        localStorage.setItem('bb8_user', JSON.stringify({displayName: user.displayName, uid: user.uid}));
+        showApp(user.displayName || '');
+        safeRender();
+        if (window.S && window.S.data && Object.keys(window.S.data).length)
+          safeToast('Vítej zpět, ' + user.displayName + '! ✓', 'success');
+        window.saveToCloud = () =>
+          setDoc(doc(db, 'users', user.uid), { state: window.S });
       }
 
-      // Ulož user info pro offline přístup
-      localStorage.setItem('bb8_user', JSON.stringify({displayName: user.displayName, uid: user.uid}));
-
-      // Data načtena (nebo chyba) — skryj loading, zobraz dashboard
-      loadingScreen.style.display = 'none';
-      appEl.style.display         = 'block';
-      const name=user.displayName||'';
-      const initials=name.split(' ').filter(Boolean).map(w=>w[0]).join('').slice(0,2).toUpperCase()||'?';
-      document.getElementById('userMenuBtn').style.display = 'flex';
-      document.getElementById('userInfo').textContent      = name.split(' ')[0];
-      document.getElementById('userInitials').textContent  = initials;
-      document.getElementById('udAvatarLg').textContent    = initials;
-      document.getElementById('udName').textContent        = name;
-      window.render();
-      if (window.S.data && Object.keys(window.S.data).length)
-        window.toast('Vítej zpět, ' + user.displayName + '! ✓', 'success');
-
-      window.saveToCloud = () =>
-        setDoc(doc(db, 'users', user.uid), { state: window.S });
-
     } else {
-      // Zkontroluj offline režim — máme uloženého usera a data?
-      const cachedUser = JSON.parse(localStorage.getItem('bb8_user') || 'null');
+      const cachedUser  = JSON.parse(localStorage.getItem('bb8_user') || 'null');
       const hasLocalData = !!localStorage.getItem('bb8');
 
       if (!navigator.onLine && cachedUser && hasLocalData) {
-        // OFFLINE REŽIM: zobraz dashboard z localStorage, nepřihlašuj přes Firebase
-        loadingScreen.style.display = 'none';
-        appEl.style.display         = 'block';
-        const name = cachedUser.displayName || '';
-        const initials = name.split(' ').filter(Boolean).map(w=>w[0]).join('').slice(0,2).toUpperCase() || '?';
-        document.getElementById('userMenuBtn').style.display = 'flex';
-        document.getElementById('userInfo').textContent      = name.split(' ')[0];
-        document.getElementById('userInitials').textContent  = initials;
-        document.getElementById('udAvatarLg').textContent    = initials;
-        document.getElementById('udName').textContent        = name + ' · offline';
-        window.saveToCloud = null; // nelze ukládat do cloudu
-        window.render();
-        window.toast('Offline režim — data z posledního přihlášení 📴', 'info');
-
-        // Jakmile se internet vrátí, automaticky znovu načti a přihlas
+        // OFFLINE REŽIM
+        showApp((cachedUser.displayName || '') + ' · offline');
+        window.saveToCloud = null;
+        safeRender();
+        safeToast('Offline režim — data z posledního přihlášení 📴', 'info');
         window.addEventListener('online', () => {
-          window.toast('Připojení obnoveno — přihlašuji… 🌐', 'success');
+          safeToast('Připojení obnoveno — přihlašuji… 🌐', 'success');
           setTimeout(() => location.reload(), 1200);
         }, { once: true });
-
       } else {
-        // Standardní odhlášení — zobraz login screen
+        // Odhlášení — zobraz login screen
         loadingScreen.style.display = 'none';
         loginScreen.style.display   = 'flex';
         appEl.style.display         = 'none';
         document.getElementById('userMenuBtn').style.display = 'none';
-        closeUserMenu();
+        if (typeof closeUserMenu === 'function') closeUserMenu();
         window.saveToCloud = null;
       }
     }
