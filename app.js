@@ -25,7 +25,14 @@ save();
 
 let _cloudTimer=null;
 function save(){
-  localStorage.setItem('bb8',JSON.stringify(S));
+  try{
+    localStorage.setItem('bb8',JSON.stringify(S));
+  }catch(e){
+    if(e.name==='QuotaExceededError'||e.name==='NS_ERROR_DOM_QUOTA_REACHED'){
+      console.warn('[BQ] localStorage plný — data uložena jen do cloudu');
+      if(typeof toast==='function') toast('Úložiště prohlížeče je plné — data jsou bezpečně v cloudu','warn');
+    }
+  }
   if(window.saveToCloud){
     clearTimeout(_cloudTimer);
     _cloudTimer=setTimeout(()=>window.saveToCloud(),1200);
@@ -158,7 +165,7 @@ function allCats(t){ return [...DEF[t],...(S.cc[t]||[])]; }
 function icon(cat){ return cat.split(' ').pop()||'📦'; }
 function cname(cat){ return cat.split(' ').slice(0,-1).join(' ')||cat; }
 function cmap(arr){ const m={}; arr.forEach(t=>{m[t.cat]=(m[t.cat]||0)+t.amount;}); return Object.entries(m).sort((a,b)=>b[1]-a[1]); }
-function close2(id){ document.getElementById(id).classList.remove('open'); }
+function close2(id){ document.getElementById(id)?.classList.remove('open'); }
 
 function toast(msg,type=''){
   const w=document.getElementById('toastWrap'),t=document.createElement('div');
@@ -400,6 +407,7 @@ function addTransaction(){
     const goalId=parseInt(document.getElementById('txGoalPick').value);
     const g=S.goals.find(g=>g.id===goalId);
     if(!g){toast('Nejprve přidej cíl 🎯','warn');return;}
+    if(!g.target){toast('Nejprve nastav cílovou částku cíle ✏️','warn');return;}
     S.data[k].push({id:Date.now(),type:'investment',name,amount,cat:g.name+' '+g.emoji,goalId,date});
     g.saved=Math.min(g.target,g.saved+amount);
     toast(fmt(amount)+' → '+g.emoji+' '+g.name,'success');
@@ -456,7 +464,7 @@ function calcGoalMonthly(target,saved,deadline){
   if(!deadline||!target) return null;
   const dl=new Date(deadline);
   const now2=new Date();
-  const months=Math.max(1,(dl.getFullYear()-now2.getFullYear())*12+(dl.getMonth()-now2.getMonth())+(dl.getDate()>now2.getDate()?0:-0));
+  const months=Math.max(1,(dl.getFullYear()-now2.getFullYear())*12+(dl.getMonth()-now2.getMonth())+(dl.getDate()>=now2.getDate()?0:-1));
   const remaining=Math.max(0,target-(saved||0));
   return remaining>0?Math.ceil(remaining/months):0;
 }
@@ -556,7 +564,10 @@ function deleteGoal(id){
   const g=S.goals.find(g=>g.id===id);
   if(g&&g.isDefault){toast('Záchranné fondy nelze smazat 🔒','warn');return;}
   if(!confirm('Opravdu smazat tento cíl?'))return;
-  S.goals=S.goals.filter(g=>g.id!==id); save(); toast('Cíl smazán'); render();
+  // Odstraň i recurring šablony navázané na tento cíl
+  S.recurring=(S.recurring||[]).filter(r=>r.goalId!==id);
+  S.goals=S.goals.filter(g=>g.id!==id);
+  save(); toast('Cíl smazán'); render();
 }
 
 function openPlanModal(){
@@ -635,7 +646,7 @@ function renderCatManager(){
   if(cust.length){
     h+='<div class="cat-section-label">Vlastní kategorie</div>';
     h+=cust.map((cat,i)=>{const pts=cat.split(' '),em=pts[pts.length-1]||'📦',nm=pts.slice(0,-1).join(' ')||cat;
-      return '<div class="cat-row-item"><input class="cat-emoji-inp" type="text" maxlength="2" value="'+em+'" id="ce-'+i+'" oninput="liveSaveCat('+i+')"><input class="cat-name-inp" type="text" value="'+nm+'" id="cn-'+i+'" oninput="liveSaveCat('+i+')"><button class="cat-del-btn" onclick="deleteCat('+i+')" title="Smazat">×</button></div>';
+      return '<div class="cat-row-item"><input class="cat-emoji-inp" type="text" maxlength="2" value="'+esc(em)+'" id="ce-'+i+'" oninput="liveSaveCat('+i+')"><input class="cat-name-inp" type="text" value="'+esc(nm)+'" id="cn-'+i+'" oninput="liveSaveCat('+i+')"><button class="cat-del-btn" onclick="deleteCat('+i+')" title="Smazat">×</button></div>';
     }).join('');
   }
   if(!def.length&&!cust.length) h='<div class="empty">Žádné kategorie</div>';
@@ -788,6 +799,8 @@ function deletePortfolio(id){
   Object.values(S.data||{}).forEach(txs=>(txs||[]).forEach(tx=>{
     if(tx.portfolioId===id){tx.portfolioId=null;tx.cat='Investice 📈';}
   }));
+  // Odstraň i recurring šablony navázané na toto portfolio
+  S.recurring=(S.recurring||[]).filter(r=>r.portfolioId!==id);
   S.portfolios=S.portfolios.filter(p=>p.id!==id);
   save(); toast('Portfolio '+p.emoji+' '+p.name+' smazáno'); render();
 }
@@ -1223,8 +1236,9 @@ function renderSavingsTrend(){
 
 function renderGoalsMini(){
   const el=document.getElementById('goalsMini');
-  if(!S.goals.length){el.innerHTML='<div class="empty"><strong>🎯</strong>Žádné cíle.<br>Klikni a přidej svůj první!</div>';return;}
-  const cards=S.goals.filter(g=>g.target>0).map(g=>{
+  const withTarget=S.goals.filter(g=>g.target>0);
+  if(!withTarget.length){el.innerHTML='<div class="empty"><strong>🎯</strong>Žádné aktivní cíle.<br>Nastav cílovou částku v záložce Úspory.</div>';return;}
+  const cards=withTarget.map(g=>{
     const pct=Math.min(100,Math.round(((g.saved||0)/g.target)*100));
     const bc=pct>=100?'var(--sage)':pct>=75?'var(--gold)':'var(--rose-mid)';
     return '<div class="goal-mini" onclick="openAddGoalModal('+g.id+')">'+
@@ -1609,24 +1623,17 @@ function renderDefaultFunds(){
   const t=txs();
   const income=t.filter(x=>x.type==='income').reduce((s,x)=>s+x.amount,0);
   const planInc=Object.values(curIncome()).reduce((s,v)=>s+v,0);
-  const expense=t.filter(x=>x.type==='expense').reduce((s,x)=>s+x.amount,0);
-  const planExp=Object.values(curLimits()).reduce((s,v)=>s+v,0);
   // Průměr přes všechny měsíce s daty — stabilnější než aktuální měsíc
   const allKeys=Object.keys(S.data||{});
-  const incVals=[],expVals=[];
+  const incVals=[];
   allKeys.forEach(k=>{
     const rows=S.data[k]||[];
     const inc=rows.filter(x=>x.type==='income').reduce((s,x)=>s+x.amount,0);
-    const exp=rows.filter(x=>x.type==='expense').reduce((s,x)=>s+x.amount,0);
     if(inc>0)incVals.push(inc);
-    if(exp>0)expVals.push(exp);
   });
   const avgIncome=incVals.length?Math.round(incVals.reduce((s,v)=>s+v,0)/incVals.length):0;
-  const avgExpense=expVals.length?Math.round(expVals.reduce((s,v)=>s+v,0)/expVals.length):0;
   const refIncome=avgIncome||planInc||income;
-  const refExp=avgExpense||planExp||expense;
   const incLabel=incVals.length>1?'průměr '+incVals.length+' měs.':'1 měs. dat';
-  const expLabel=expVals.length>1?'průměr '+expVals.length+' měs.':'1 měs. dat';
   function fCard(g,col,desc,hint){
     if(!g)return '';
     const pct=g.target?Math.min(100,Math.round((g.saved||0)/g.target*100)):0;
@@ -1685,7 +1692,7 @@ function renderGoalsInsights(){
     const need=peace.target-(peace.saved||0);
     h+=tip('info','🕊️','Priorita','Naplň <strong>Klid na duši</strong>.<br>Chybí <strong>'+fmt(need)+'</strong>. Pak Rezerva, pak investice.');
   } else if(!reserve||!reserve.target){
-    h+=tip('good','✅','Klid na duši splněn!','Nastav teď cíl pro <strong>Rezervu</strong> — doporučeno 3–6× měsíční výdaje.');
+    h+=tip('good','✅','Klid na duši splněn!','Nastav teď cíl pro <strong>Rezervu</strong> — doporučeno 3–6× měsíční příjem.');
   } else if(!reserveDone){
     const need=reserve.target-(reserve.saved||0);
     h+=tip('info','🛡️','Buduj Rezervu','Klid na duši je splněn.<br>Na Rezervě chybí <strong>'+fmt(need)+'</strong>.');

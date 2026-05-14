@@ -25,7 +25,8 @@
       }));
   document.getElementById('btnLogout').addEventListener('click', () => {
     localStorage.removeItem('bb8_user');
-    signOut(auth);
+    localStorage.removeItem('bb8'); // smaž finanční data z prohlížeče při odhlášení
+    signOut(auth).catch(err => console.error('Logout error:', err));
   });
 
   // Bezpečné volání window funkcí — odolné vůči selhání app.js
@@ -70,7 +71,7 @@
             if (cs.currency)                  window.S.currency   = cs.currency;
             if (Array.isArray(cs.portfolios)) window.S.portfolios = cs.portfolios;
             if (Array.isArray(cs.recurring))  window.S.recurring  = cs.recurring;
-            localStorage.setItem('bb8', JSON.stringify(window.S));
+            try { localStorage.setItem('bb8', JSON.stringify(window.S)); } catch(_){}
           }
           safeEnsureFunds();
         } else {
@@ -85,7 +86,7 @@
           };
           window.S = freshState;
           safeEnsureFunds();
-          localStorage.setItem('bb8', JSON.stringify(window.S));
+          try { localStorage.setItem('bb8', JSON.stringify(window.S)); } catch(_){}
           await setDoc(doc(db, 'users', user.uid), { state: window.S });
           safeToast('Vítej, ' + user.displayName + '! Účet vytvořen ✓', 'success');
         }

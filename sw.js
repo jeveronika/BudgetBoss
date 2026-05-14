@@ -3,9 +3,10 @@
 // ╚══════════════════════════════════════════╝
 // v2: přidán Firebase SDK do pre-cache pro plný offline na mobilu
 
-const CACHE = 'bq-v3';
+const CACHE = 'bq-v4';
 
 // Co se předem stáhne při instalaci (app shell + Firebase SDK)
+// App shell — tyto soubory musí být dostupné offline
 const PRECACHE = [
   '/BudgetQueen/',
   '/BudgetQueen/index.html',
@@ -14,7 +15,11 @@ const PRECACHE = [
   '/BudgetQueen/firebase.js',
   '/BudgetQueen/manifest.json',
   '/BudgetQueen/icon.svg',
-  // Firebase SDK — verzí fixováno, bezpečné cachovat
+];
+
+// Firebase SDK — cachuje se za provozu (stale-while-revalidate), NE při instalaci
+// Důvod: selhání CDN při instalaci by zrušilo celý service worker
+const PRECACHE_OPTIONAL = [
   'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js',
   'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js',
   'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js',
@@ -37,7 +42,7 @@ self.addEventListener('install', event => {
   );
 });
 
-// ── ACTIVATE: vymaž staré cache (bq-v1 a starší) ──
+// ── ACTIVATE: vymaž staré cache + warm-up Firebase SDK ──
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys()
@@ -47,6 +52,12 @@ self.addEventListener('activate', event => {
           .map(k => caches.delete(k))
       ))
       .then(() => self.clients.claim())
+      .then(() => caches.open(CACHE).then(cache =>
+        // Firebase SDK stáhni na pozadí po aktivaci — chyby ignoruj
+        Promise.allSettled(PRECACHE_OPTIONAL.map(url =>
+          fetch(url).then(r => { if (r.ok) cache.put(url, r); }).catch(() => {})
+        ))
+      ))
   );
 });
 
