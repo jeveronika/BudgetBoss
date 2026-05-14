@@ -1145,7 +1145,8 @@ if(!S.currency)   S.currency='CZK';
 if(!S.portfolios) S.portfolios=[];
 // ── STATE SANITIZER — opravuje koruptovaná/neúplná data při načtení ──
 function sanitizeState(){
-  // Top-level typy
+  // Zásada: NIKDY nesmazat platná data — jen doplnit chybějící pole
+  // Top-level typy — jen přidej pokud chybí, nikdy nemaž
   if(!S.cc||typeof S.cc!=='object')S.cc={expense:[],income:[],investment:[]};
   ['expense','income','investment'].forEach(k=>{if(!Array.isArray(S.cc[k]))S.cc[k]=[];});
   if(!S.data||typeof S.data!=='object')S.data={};
@@ -1155,34 +1156,35 @@ function sanitizeState(){
   if(!Array.isArray(S.recurring))S.recurring=[];
   if(!Array.isArray(S.portfolios))S.portfolios=[];
   if(!S.ruleRatio||typeof S.ruleRatio!=='object')S.ruleRatio={n:50,w:30,s:20};
-  if(!S.currency||!CURR[S.currency])S.currency='CZK';
-  // Sanitizuj transakce v každém měsíci
+  if(!S.currency||!['CZK','EUR','USD','GBP','PLN'].includes(S.currency))S.currency='CZK';
+  // Oprav transakce — nikdy nesmazat, jen opravit chybějící pole
   Object.keys(S.data).forEach(k=>{
     if(!Array.isArray(S.data[k])){S.data[k]=[];return;}
     S.data[k]=S.data[k].filter(tx=>{
-      if(!tx||typeof tx!=='object')return false;
+      if(!tx||typeof tx!=='object')return false; // smaž jen absolutně nečitelné záznamy
       if(!tx.id)tx.id=Date.now()+Math.random();
-      if(!tx.type||!['expense','income','investment'].includes(tx.type))return false;
-      tx.amount=Number(tx.amount)||0;
+      if(!tx.type||!['expense','income','investment'].includes(tx.type))tx.type='expense'; // oprav, nesmazávej
+      if(typeof tx.amount!=='number'||isNaN(tx.amount))tx.amount=0;
       if(!tx.cat||typeof tx.cat!=='string')tx.cat='Ostatní 📦';
       if(!tx.name||typeof tx.name!=='string')tx.name='—';
       return true;
     });
   });
-  // Sanitizuj cíle
+  // Oprav cíle — nesmaž, jen doplň
   S.goals=S.goals.filter(g=>{
     if(!g||typeof g!=='object')return false;
     if(!g.id)g.id=Date.now()+Math.random();
     if(!g.name)g.name='Cíl';
-    g.target=Number(g.target)||0;
-    g.saved=Number(g.saved)||0;
+    if(typeof g.target!=='number'||isNaN(g.target))g.target=0;
+    if(typeof g.saved!=='number'||isNaN(g.saved))g.saved=0;
     return true;
   });
-  // Sanitizuj opakující se šablony
+  // Oprav recurring šablony — smaž jen pokud chybí id+type+startKey (nelze zobrazit)
   S.recurring=S.recurring.filter(r=>{
     if(!r||typeof r!=='object')return false;
-    if(!r.id||!r.type||!r.startKey)return false;
-    r.amount=Number(r.amount)||0;
+    if(!r.id||!r.startKey)return false; // bez id nebo startKey nelze pracovat
+    if(!r.type||!['expense','income','investment'].includes(r.type))r.type='expense';
+    if(typeof r.amount!=='number'||isNaN(r.amount))r.amount=0;
     if(!Array.isArray(r.skippedKeys))r.skippedKeys=[];
     return true;
   });
@@ -2168,15 +2170,16 @@ function render(){
   h=Math.min(100,h);
   const hc=h>=70?'var(--sage)':h>=40?'var(--gold)':'var(--rose)';
   const hm=h>=80?'💚 Výborné finanční zdraví!':h>=60?'🌿 Dobré — ještě trochu zapracovat':h>=40?'⚠️ Průměrné — nastav si plán':'🌸 Začni přidáním příjmů a cílů';
-  document.getElementById('hsFill').style.cssText='width:'+h+'%;background:'+hc;
-  document.getElementById('hsPct').textContent=h+'%';
-  document.getElementById('hsMsg').textContent=hm; document.getElementById('hsMsg').style.color=hc;
+  const hsFill=document.getElementById('hsFill'),hsPct=document.getElementById('hsPct'),hsMsg=document.getElementById('hsMsg');
+  if(hsFill) hsFill.style.cssText='width:'+h+'%;background:'+hc;
+  if(hsPct)  hsPct.textContent=h+'%';
+  if(hsMsg){ hsMsg.textContent=hm; hsMsg.style.color=hc; }
   // Savings ring
   const circ=144.5,offset=circ-(Math.min(rate,100)/100)*circ;
-  document.getElementById('srCircle').style.strokeDashoffset=Math.max(0,offset);
-  document.getElementById('srNum').textContent=rate+'%';
-  document.getElementById('srGoalText').textContent=rate>=20?'✓ Cíl 20 % splněn!':'Cíl: min. 20 % (ještě '+(20-rate)+' %)';
-  document.getElementById('srGoalText').style.color=rate>=20?'var(--sage)':'var(--muted)';
+  const srCircle=document.getElementById('srCircle'),srNum=document.getElementById('srNum'),srGoalText=document.getElementById('srGoalText');
+  if(srCircle) srCircle.style.strokeDashoffset=Math.max(0,offset);
+  if(srNum)    srNum.textContent=rate+'%';
+  if(srGoalText){ srGoalText.textContent=rate>=20?'✓ Cíl 20 % splněn!':'Cíl: min. 20 % (ještě '+(20-rate)+' %)'; srGoalText.style.color=rate>=20?'var(--sage)':'var(--muted)'; }
   // Savings target: how much 20% of this month's income is
   const srTargetEl=document.getElementById('srTarget');
   if(srTargetEl){
