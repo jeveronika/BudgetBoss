@@ -1782,6 +1782,21 @@ switchTab(activeTab);
   }catch(e){}
 })();
 
+// ── DATE WATCHDOG — auto-advance when date rolls over midnight / month-end ──
+// Catches the edge case where the app stays open overnight or across a month boundary.
+// Every 60s: if the real calendar date changed AND the user was viewing "today's month",
+// silently advance cY/cM and re-render. If they were browsing history, do nothing.
+(function(){
+  let watchY=new Date().getFullYear(), watchM=new Date().getMonth();
+  setInterval(()=>{
+    const t=new Date(), rY=t.getFullYear(), rM=t.getMonth();
+    if(rY===watchY && rM===watchM) return;       // no change — do nothing
+    const wasOnToday=(cY===watchY && cM===watchM); // were we viewing "today"?
+    watchY=rY; watchM=rM;                         // update tracker regardless
+    if(wasOnToday){ cY=rY; cM=rM; render(); toast('Nový den, nový začátek 📅','info'); }
+  }, 60000);
+})();
+
 // ── SERVICE WORKER ──
 if('serviceWorker' in navigator){
   window.addEventListener('load', () => {
