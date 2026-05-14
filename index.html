@@ -8,6 +8,7 @@
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%23fdf8f5'/%3E%3Crect width='100' height='100' rx='22' fill='%23d4807a' opacity='.13'/%3E%3Ctext x='50' y='68' text-anchor='middle' font-family='Georgia%2Cserif' font-size='56' font-weight='700' font-style='italic' fill='%23d4807a'%3EQ%3C/text%3E%3C/svg%3E">
 <!-- PWA / iOS home screen -->
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Budget Queen">
 <meta name="theme-color" content="#d4807a">
@@ -1012,7 +1013,14 @@ if(S.limits||S.incomePlans){
 if(!S.plans) S.plans={};
 save();
 
-function save(){ localStorage.setItem('bb8',JSON.stringify(S)); if(window.saveToCloud) window.saveToCloud(); }
+let _cloudTimer=null;
+function save(){
+  localStorage.setItem('bb8',JSON.stringify(S));
+  if(window.saveToCloud){
+    clearTimeout(_cloudTimer);
+    _cloudTimer=setTimeout(()=>window.saveToCloud(),1200);
+  }
+}
 if(!S.catMeta)    S.catMeta={};
 if(!S.balances)   S.balances={};
 if(!S.ruleRatio)  S.ruleRatio={n:50,w:30,s:20};
