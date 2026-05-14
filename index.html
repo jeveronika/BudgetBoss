@@ -1088,6 +1088,8 @@ function fmtK(n){
 }
 // Czech plural helper: plur(1,'položka','položky','položek')
 function plur(n,a,b,c){if(n===1)return n+' '+a;if(n>=2&&n<=4)return n+' '+b;return n+' '+c;}
+// XSS ochrana — escapuje user input před vložením do innerHTML
+function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 function allCats(t){ return [...DEF[t],...(S.cc[t]||[])]; }
 function icon(cat){ return cat.split(' ').pop()||'📦'; }
 function cname(cat){ return cat.split(' ').slice(0,-1).join(' ')||cat; }
@@ -1194,10 +1196,10 @@ function setTxType(t){
   if(cmf) cmf.style.display=(isGoal||usePF)?'none':'';
   if(isGoal){
     const pick=document.getElementById('txGoalPick');
-    pick.innerHTML=S.goals.length?S.goals.map(g=>'<option value="'+g.id+'">'+g.emoji+' '+g.name+'</option>').join(''):'<option value="">Nejprve přidej cíl</option>';
+    pick.innerHTML=S.goals.length?S.goals.map(g=>'<option value="'+g.id+'">'+esc(g.emoji)+' '+esc(g.name)+'</option>').join(''):'<option value="">Nejprve přidej cíl</option>';
   } else if(usePF){
     const pick=document.getElementById('txPortfolioPick');
-    pick.innerHTML=(S.portfolios||[]).map(p=>'<option value="'+p.id+'">'+p.emoji+' '+p.name+'</option>').join('');
+    pick.innerHTML=(S.portfolios||[]).map(p=>'<option value="'+p.id+'">'+esc(p.emoji)+' '+esc(p.name)+'</option>').join('');
   } else {
     populateCat();
   }
@@ -1360,7 +1362,7 @@ function saveGoal(){
 function openAddGoalModal(id){
   addGoalId=id; const g=S.goals.find(g=>g.id===id); if(!g)return;
   const tgtTxt=g.target>0?'z '+fmt(g.target):'cíl není nastaven — nastav ho tlačítkem Upravit';
-  document.getElementById('addGoalInfo').innerHTML='<strong>'+g.emoji+' '+g.name+'</strong><br>Naspořeno: '+fmt(g.saved||0)+' '+tgtTxt;
+  document.getElementById('addGoalInfo').innerHTML='<strong>'+esc(g.emoji)+' '+esc(g.name)+'</strong><br>Naspořeno: '+fmt(g.saved||0)+' '+tgtTxt;
   document.getElementById('addGoalAmt').value='';
   document.getElementById('overlayAddGoal').classList.add('open');
   setTimeout(()=>document.getElementById('addGoalAmt').focus(),80);
@@ -1387,7 +1389,7 @@ function openPlanModal(){
   const lim=plan.limits||{}, inc=plan.income||{};
   const allInc=[...new Set([...allCats('income'),...Object.keys(inc)])];
   const allExp=[...new Set([...allCats('expense'),...Object.keys(lim)])];
-  function row(cat,obj,dt){ return '<div class="plan-row"><span class="plan-icon">'+icon(cat)+'</span><span class="plan-name">'+cname(cat)+'</span><input class="plan-input" type="number" min="0" placeholder="—" data-pt="'+dt+'" data-pc="'+cat+'" value="'+(obj[cat]||'')+'"></div>'; }
+  function row(cat,obj,dt){ return '<div class="plan-row"><span class="plan-icon">'+esc(icon(cat))+'</span><span class="plan-name">'+esc(cname(cat))+'</span><input class="plan-input" type="number" min="0" placeholder="—" data-pt="'+dt+'" data-pc="'+cat+'" value="'+(obj[cat]||'')+'"></div>'; }
   const isInherited=!S.plans[ck()];
   document.getElementById('planRows').innerHTML=
     (isInherited?'<div style="font-size:.71rem;color:var(--gold);background:var(--gold-light);border-radius:9px;padding:7px 11px;margin-bottom:10px">📋 Předvyplněno z posledního plánu. Ulož pro uložení tohoto měsíce.</div>':'')+
@@ -1453,7 +1455,7 @@ function renderCatManager(){
   let h='';
   if(def.length){
     h+='<div class="cat-section-label">Výchozí kategorie</div>';
-    h+=def.map(cat=>'<div class="cat-row-item"><span style="font-size:.95rem;width:26px;text-align:center">'+icon(cat)+'</span><span style="flex:1;font-size:.8rem;color:var(--muted)">'+cname(cat)+'</span><span style="font-size:.62rem;color:var(--border2)">výchozí</span></div>').join('');
+    h+=def.map(cat=>'<div class="cat-row-item"><span style="font-size:.95rem;width:26px;text-align:center">'+esc(icon(cat))+'</span><span style="flex:1;font-size:.8rem;color:var(--muted)">'+esc(cname(cat))+'</span><span style="font-size:.62rem;color:var(--border2)">výchozí</span></div>').join('');
   }
   if(cust.length){
     h+='<div class="cat-section-label">Vlastní kategorie</div>';
@@ -1488,13 +1490,13 @@ function openEditTx(id){
   if(!ne||!ae||!de||!ce)return;
   ne.value=tx.name; ae.value=tx.amount; de.value=tx.date||'';
   if(tx.goalId){
-    ce.innerHTML=S.goals.map(g=>'<option value="'+g.id+'"'+(g.id===tx.goalId?' selected':'')+'>'+g.name+' '+g.emoji+'</option>').join('');
+    ce.innerHTML=S.goals.map(g=>'<option value="'+g.id+'"'+(g.id===tx.goalId?' selected':'')+'>'+esc(g.name)+' '+esc(g.emoji)+'</option>').join('');
     ce.setAttribute('data-mode','goal');
   } else if(tx.portfolioId&&(S.portfolios||[]).length){
-    ce.innerHTML=(S.portfolios||[]).map(p=>'<option value="'+p.id+'"'+(p.id===tx.portfolioId?' selected':'')+'>'+p.emoji+' '+p.name+'</option>').join('');
+    ce.innerHTML=(S.portfolios||[]).map(p=>'<option value="'+p.id+'"'+(p.id===tx.portfolioId?' selected':'')+'>'+esc(p.emoji)+' '+esc(p.name)+'</option>').join('');
     ce.setAttribute('data-mode','portfolio');
   } else {
-    ce.innerHTML=allCats(tx.type).map(c=>'<option'+(c===tx.cat?' selected':'')+'>'+c+'</option>').join('');
+    ce.innerHTML=allCats(tx.type).map(c=>'<option'+(c===tx.cat?' selected':'')+'>'+esc(c)+'</option>').join('');
     ce.setAttribute('data-mode','normal');
   }
   const ekf=document.getElementById('editKindFg');
@@ -1700,8 +1702,8 @@ function portfolioCard(p){
   return '<div class="pf-card">'+
     // Header: name + note only
     '<div class="pf-header" style="margin-bottom:'+(spark?'10px':'11px')+'">'+
-      '<div class="pf-name">'+p.emoji+' '+p.name+
-        (p.note?'<div style="font-size:.63rem;font-weight:400;font-family:Jost,sans-serif;color:var(--muted);margin-top:2px">'+p.note+'</div>':'')+
+      '<div class="pf-name">'+esc(p.emoji)+' '+esc(p.name)+
+        (p.note?'<div style="font-size:.63rem;font-weight:400;font-family:Jost,sans-serif;color:var(--muted);margin-top:2px">'+esc(p.note)+'</div>':'')+
       '</div>'+
     '</div>'+
     // Full-width sparkline row
@@ -1808,8 +1810,8 @@ function renderTxList(){
     const pfx=x.type==='income'?'+':x.type==='investment'?'▲':'-';
     return '<div class="tx-item">'+
       '<div class="tx-icon" style="background:'+bg+'">'+icon(x.cat)+'</div>'+
-      '<div class="tx-info"><div class="tx-name">'+x.name+'</div>'+
-      '<div class="tx-meta"><span>'+cname(x.cat)+'</span>'+(x.date?'<span>'+fmtDate(x.date)+'</span>':'')+(x.kind==='want'?'<span style="color:var(--mauve)">🎉</span>':x.kind==='need'?'<span style="color:var(--sage)">🏠</span>':'')+'</div></div>'+
+      '<div class="tx-info"><div class="tx-name">'+esc(x.name)+'</div>'+
+      '<div class="tx-meta"><span>'+esc(cname(x.cat))+'</span>'+(x.date?'<span>'+fmtDate(x.date)+'</span>':'')+(x.kind==='want'?'<span style="color:var(--mauve)">🎉</span>':x.kind==='need'?'<span style="color:var(--sage)">🏠</span>':'')+'</div></div>'+
       '<div class="tx-amount '+cls+'">'+pfx+fmt(x.amount)+'</div>'+
       '<div class="tx-actions">'+
         '<button class="tx-act-btn edit-btn" onclick="openEditTx('+x.id+')" title="Upravit">✏</button>'+
@@ -1850,9 +1852,9 @@ function renderGoalsMini(){
     const pct=Math.min(100,Math.round(((g.saved||0)/g.target)*100));
     const bc=pct>=100?'var(--sage)':pct>=75?'var(--gold)':'var(--rose-mid)';
     return '<div class="goal-mini" onclick="openAddGoalModal('+g.id+')">'+
-      '<div style="font-size:1.15rem">'+g.emoji+'</div>'+
+      '<div style="font-size:1.15rem">'+esc(g.emoji)+'</div>'+
       '<div class="goal-mini-info">'+
-        '<div class="goal-mini-name">'+g.name+'<span class="g-badge'+(pct>=100?' done':' active')+'">'+(pct>=100?'✓':pct+'%')+'</span></div>'+
+        '<div class="goal-mini-name">'+esc(g.name)+'<span class="g-badge'+(pct>=100?' done':' active')+'">'+(pct>=100?'✓':pct+'%')+'</span></div>'+
         '<div class="goal-mini-nums">'+fmt(g.saved)+' / '+fmt(g.target)+'</div>'+
         '<div class="goal-mini-bar"><div class="goal-mini-fill" style="width:'+pct+'%;background:'+bc+'"></div></div>'+
       '</div></div>';
@@ -1872,7 +1874,7 @@ function goalCard(g){
       (monthly>0?'<span>· '+fmt(monthly)+' / měs.</span>':'<span>· Cíl splněn ✓</span>')+
     '</div>':'';
   return '<div class="goal-card">'+
-    '<div class="goal-top"><span class="goal-emoji">'+g.emoji+'</span><span class="goal-gname">'+g.name+'</span>'+
+    '<div class="goal-top"><span class="goal-emoji">'+esc(g.emoji)+'</span><span class="goal-gname">'+esc(g.name)+'</span>'+
     '<span class="goal-badge'+(pct>=100?' done':'')+'">'+(pct>=100?'✓ Splněno':pct+'%')+'</span></div>'+
     '<div class="goal-nums"><span>'+fmt(g.saved||0)+' naspořeno</span><span>cíl: '+fmt(g.target)+'</span></div>'+
     '<div class="goal-bar-wrap"><div class="goal-bar-fill" style="width:'+pct+'%;'+bc+'"></div></div>'+
@@ -1891,7 +1893,7 @@ function renderGoalsList(t){
     const linked=(t||[]).filter(x=>x.goalId===g.id);
     const lh=linked.length?'<div style="margin-top:7px;display:flex;flex-direction:column;gap:4px">'+
       linked.map(x=>'<div style="display:flex;align-items:center;gap:8px;font-size:.69rem;color:var(--text2);background:var(--bg);border-radius:8px;padding:5px 9px">'+
-        (x.date?'<span style="color:var(--muted)">'+fmtDate(x.date)+'</span>':'')+'<span style="flex:1">'+x.name+'</span>'+
+        (x.date?'<span style="color:var(--muted)">'+fmtDate(x.date)+'</span>':'')+'<span style="flex:1">'+esc(x.name)+'</span>'+
         '<span style="color:var(--mauve);font-weight:600">+'+fmt(x.amount)+'</span></div>').join('')+'</div>':'';
     return goalCard(g)+lh;
   }).join('');
@@ -2085,7 +2087,7 @@ function renderBudget(t){
     const bc=isInc?'var(--sage)':(pct>100?'var(--rose)':pct>80?'var(--gold)':'var(--sage)');
     const rem=lmt-act;let rc='ok',rt='';
     if(lmt>0){if(isInc){if(act>=lmt){rc='ok';rt='✓ Plán splněn';}else if(pct>=80){rc='warn';rt='Zbývá '+fmt(Math.abs(rem))+' do plánu';}else{rc='ok';rt=pct+'% splněno';}}else{if(rem<0){rc='over';rt='Přečerpáno o '+fmt(Math.abs(rem));}else if(pct>=80){rc='warn';rt='Zbývá jen '+fmt(rem);}else{rc='ok';rt='Zbývá '+fmt(rem);}}}
-    return '<div class="budget-row"><div class="budget-top"><span class="bcat-icon">'+icon(cat)+'</span><span class="bcat-name">'+cname(cat)+'</span><span class="bcat-actual '+(isInc?'pos':'neg')+'">'+fmt(act)+'</span>'+(lmt?'<span style="font-size:.7rem;color:var(--muted)">/ '+fmt(lmt)+'</span>':'')+
+    return '<div class="budget-row"><div class="budget-top"><span class="bcat-icon">'+esc(icon(cat))+'</span><span class="bcat-name">'+esc(cname(cat))+'</span><span class="bcat-actual '+(isInc?'pos':'neg')+'">'+fmt(act)+'</span>'+(lmt?'<span style="font-size:.7rem;color:var(--muted)">/ '+fmt(lmt)+'</span>':'')+
     '</div>'+(lmt?'<div class="bprog-wrap"><div class="bprog-bar"><div class="bprog-fill" style="width:'+Math.min(100,pct)+'%;background:'+bc+'"></div></div><span class="bprog-pct">'+pct+'%</span></div><div class="b-remain '+rc+'">'+rt+'</div>':'<div style="font-size:.67rem;color:var(--muted);margin-top:2px">Bez plánu</div>')+'</div>';
   }
   let h='';
@@ -2242,7 +2244,7 @@ function renderDefaultFunds(){
     const noTarget=!g.target;
     return '<div class="fund-card">'+
       '<div class="fund-deco" style="background:'+col+'"></div>'+
-      '<div class="fund-title">'+g.emoji+' '+g.name+
+      '<div class="fund-title">'+esc(g.emoji)+' '+esc(g.name)+
         (done?'<span style="font-size:.63rem;background:var(--sage-light);color:var(--sage);padding:2px 8px;border-radius:20px;font-family:Jost,sans-serif;font-weight:600">✓ Splněno</span>':'')+
       '</div>'+
       '<div class="fund-desc">'+desc+'</div>'+
@@ -2308,10 +2310,10 @@ function renderGoalsInsights(){
     const closest=custom.filter(g=>(g.saved||0)<g.target).sort((a,b)=>((b.saved||0)/b.target)-((a.saved||0)/a.target))[0];
     if(closest){
       const pct=Math.round((closest.saved||0)/closest.target*100);
-      h+=tip('warn','🎯','Nejblíže splnění',closest.emoji+' <strong>'+closest.name+'</strong><br>'+pct+' % · chybí '+fmt(closest.target-(closest.saved||0)));
+      h+=tip('warn','🎯','Nejblíže splnění',esc(closest.emoji)+' <strong>'+esc(closest.name)+'</strong><br>'+pct+' % · chybí '+fmt(closest.target-(closest.saved||0)));
     }
     const doneCust=custom.filter(g=>(g.saved||0)>=g.target);
-    if(doneCust.length) h+=tip('good','🎉','Splněno!',doneCust.map(g=>g.emoji+' <strong>'+g.name+'</strong>').join('<br>')+' — '+( doneCust.length===1?'cíl splněn':'cíle splněny')+'!');
+    if(doneCust.length) h+=tip('good','🎉','Splněno!',doneCust.map(g=>esc(g.emoji)+' <strong>'+esc(g.name)+'</strong>').join('<br>')+' — '+( doneCust.length===1?'cíl splněn':'cíle splněny')+'!');
   } else {
     h+=tip('info','💡','Vlastní cíle','Přidej cíle jako dovolená nebo nové auto. Uvidíš, kolik měsíčně potřebuješ odkládat.');
   }
