@@ -12,6 +12,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Budget Queen">
 <meta name="theme-color" content="#d4807a">
+<link rel="manifest" href="/BudgetQueen/manifest.json">
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400;1,600&family=Jost:wght@300;400;500;600&display=swap');
 :root{
@@ -2671,6 +2672,25 @@ switchTab(activeTab);
     document.head.appendChild(al);
   }catch(e){}
 })();
+
+// ── SERVICE WORKER ──
+if('serviceWorker' in navigator){
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/BudgetQueen/sw.js', {scope:'/BudgetQueen/'})
+      .then(reg => {
+        // Pokud je dostupná nová verze SW, aktivuj ji při příští návštěvě
+        reg.addEventListener('updatefound', () => {
+          const newWorker = reg.installing;
+          newWorker?.addEventListener('statechange', () => {
+            if(newWorker.state === 'installed' && navigator.serviceWorker.controller){
+              window.toast('Nová verze aplikace je připravena — refresh pro aktualizaci 🔄','info');
+            }
+          });
+        });
+      })
+      .catch(err => console.warn('[BQ] SW registration failed:', err));
+  });
+}
 </script>
 </body>
 </html>
