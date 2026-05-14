@@ -37,7 +37,7 @@
       <input type="checkbox" id="gdprCheck" onchange="toggleLoginBtn()"
         style="margin-top:3px;width:15px;height:15px;accent-color:#d4807a;flex-shrink:0;cursor:pointer">
       <div style="font-size:.73rem;color:var(--text2);line-height:1.55">
-        Souhlasím se <span onclick="showPrivacyModal()" style="color:var(--rose);text-decoration:underline;cursor:pointer">zásadami ochrany soukromí</span> a uložením svých finančních dat v Google Firebase.
+        Souhlasím se <span onclick="showPrivacyModal()" style="color:var(--rose);text-decoration:underline;cursor:pointer">zásadami ochrany soukromí</span> a <span onclick="showTosModal()" style="color:var(--rose);text-decoration:underline;cursor:pointer">podmínkami použití</span>.
       </div>
     </div>
     <p style="font-size:.62rem;color:var(--muted);margin-top:10px;line-height:1.5">Přihlašuješ se přes svůj existující Google účet.</p>
@@ -327,6 +327,10 @@
   </a>
   &nbsp;·&nbsp;
   <span onclick="showPrivacyModal()" style="color:var(--muted);text-decoration:underline;cursor:pointer">Ochrana soukromí</span>
+  &nbsp;·&nbsp;
+  <span onclick="showTosModal()" style="color:var(--muted);text-decoration:underline;cursor:pointer">Podmínky použití</span>
+  &nbsp;·&nbsp;
+  <a href="mailto:jsem@veronikajezikova.cz" style="color:var(--muted);text-decoration:underline">jsem@veronikajezikova.cz</a>
 </footer>
 
 </div><!-- /.app -->
@@ -541,6 +545,41 @@
     </div>
     <div class="mactions">
       <button class="mbtn-ok" onclick="close2('overlayPrivacy')">Rozumím ✓</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Podmínky použití -->
+<div class="overlay" id="overlayTos" onclick="close2('overlayTos')" style="z-index:1100">
+  <div class="modal" onclick="event.stopPropagation()" style="max-width:500px">
+    <div class="mtitle">📋 Podmínky <em>použití</em></div>
+    <div style="font-size:.79rem;color:var(--text2);line-height:1.75;max-height:58vh;overflow-y:auto;padding-right:6px">
+
+      <div style="font-weight:600;color:var(--text);margin:0 0 4px">Co je Budget Queen</div>
+      <p style="margin:0 0 14px">Budget Queen je osobní aplikace pro správu financí. Slouží výhradně k soukromému evidování příjmů, výdajů, investic a finančních cílů.</p>
+
+      <div style="font-weight:600;color:var(--text);margin:0 0 4px">Kdo může aplikaci používat</div>
+      <p style="margin:0 0 14px">Aplikaci může používat kdokoliv s platným Google účtem, kdo souhlasí s těmito podmínkami a se zásadami ochrany soukromí.</p>
+
+      <div style="font-weight:600;color:var(--text);margin:0 0 4px">Co aplikace není</div>
+      <p style="margin:0 0 14px">Budget Queen <strong>neposkytuje finanční poradenství</strong>. Veškeré výpočty, doporučení a přehledy jsou orientační a neslouží jako základ pro investiční ani jiná finanční rozhodnutí. Za svá rozhodnutí zodpovídáš výhradně ty.</p>
+
+      <div style="font-weight:600;color:var(--text);margin:0 0 4px">Tvá data</div>
+      <p style="margin:0 0 14px">Data, která do aplikace zadáváš, jsou tvá. Nezpracováváme je pro reklamní ani jiné komerční účely. Podrobnosti najdeš v <span onclick="close2('overlayTos');showPrivacyModal()" style="color:var(--rose);text-decoration:underline;cursor:pointer">zásadách ochrany soukromí</span>.</p>
+
+      <div style="font-weight:600;color:var(--text);margin:0 0 4px">Omezení odpovědnosti</div>
+      <p style="margin:0 0 14px">Aplikace je poskytována „tak jak je". Nezaručujeme nepřerušenou dostupnost ani bezchybný provoz. Neneseme odpovědnost za žádné přímé ani nepřímé škody vzniklé v souvislosti s jejím používáním.</p>
+
+      <div style="font-weight:600;color:var(--text);margin:0 0 4px">Změny podmínek</div>
+      <p style="margin:0 0 14px">Tyto podmínky můžeme kdykoliv aktualizovat. O podstatných změnách tě budeme informovat prostřednictvím aplikace. Dalším používáním po změně vyjadřuješ souhlas s novým zněním.</p>
+
+      <div style="font-weight:600;color:var(--text);margin:0 0 4px">Kontakt</div>
+      <p style="margin:0;margin-bottom:14px">Dotazy nebo žádosti zašli na <a href="mailto:jsem@veronikajezikova.cz" style="color:var(--rose)">jsem@veronikajezikova.cz</a></p>
+
+      <p style="margin:0;font-size:.71rem;color:var(--muted)">Platné od 14. 5. 2026 · Budget Queen, Veronika Ježíková</p>
+    </div>
+    <div class="mactions">
+      <button class="mbtn-ok" onclick="close2('overlayTos')">Rozumím ✓</button>
     </div>
   </div>
 </div>

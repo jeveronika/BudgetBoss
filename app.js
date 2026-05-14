@@ -230,6 +230,9 @@ function toggleLoginBtn(){
 function showPrivacyModal(){
   document.getElementById('overlayPrivacy').classList.add('open');
 }
+function showTosModal(){
+  document.getElementById('overlayTos').classList.add('open');
+}
 // Pokud uživatel již dříve souhlasil, auto-zaškrtni checkbox
 (function initGdpr(){
   if(localStorage.getItem('bb8_gdpr')){
