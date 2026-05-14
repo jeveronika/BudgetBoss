@@ -927,7 +927,6 @@ input[type=date]{-webkit-appearance:none;appearance:none}
           if (Array.isArray(cs.goals))      window.S.goals      = cs.goals;
           if (cs.plans)                     window.S.plans      = cs.plans;
           if (cs.catMeta)                   window.S.catMeta    = cs.catMeta;
-          if (cs.balances)                  window.S.balances   = cs.balances;
           if (cs.ruleRatio)                 window.S.ruleRatio  = cs.ruleRatio;
           if (cs.currency)                  window.S.currency   = cs.currency;
           if (Array.isArray(cs.portfolios)) window.S.portfolios = cs.portfolios;
@@ -938,7 +937,7 @@ input[type=date]{-webkit-appearance:none;appearance:none}
           // První přihlášení — vždy začni čistým štítem (ignoruj localStorage)
           const freshState = {
             cc:{expense:[],income:[],investment:[]},
-            data:{},goals:[],plans:{},catMeta:{},balances:{},
+            data:{},goals:[],plans:{},catMeta:{},
             ruleRatio:{n:50,w:30,s:20},
             currency:'CZK',
             portfolios:[]
@@ -985,7 +984,7 @@ input[type=date]{-webkit-appearance:none;appearance:none}
     try {
       const freshState = {
         cc:{expense:[],income:[],investment:[]},
-        data:{},goals:[],plans:{},catMeta:{},balances:{},
+        data:{},goals:[],plans:{},catMeta:{},
         ruleRatio:{n:50,w:30,s:20},
         currency:'CZK',
         portfolios:[]
@@ -1016,7 +1015,7 @@ const DEF={
   investment:['ETF 📈','Akcie 📊','Krypto 🪙','Nemovitosti 🏡','Spořicí účet 🏦','Penzijní fond 🎯','Ostatní investice 💎']
 };
 
-var S=JSON.parse(localStorage.getItem('bb8')||'null')||{cc:{expense:[],income:[],investment:[]},data:{},goals:[],plans:{},catMeta:{},balances:{}};
+var S=JSON.parse(localStorage.getItem('bb8')||'null')||{cc:{expense:[],income:[],investment:[]},data:{},goals:[],plans:{},catMeta:{}};
 let now=new Date(),cY=now.getFullYear(),cM=now.getMonth();
 let txType='expense',txFilter='all',activeTab=localStorage.getItem('bb8_tab')||'overview',editGoalId=null,addGoalId=null;
 
@@ -1039,7 +1038,6 @@ function save(){
   }
 }
 if(!S.catMeta)    S.catMeta={};
-if(!S.balances)   S.balances={};
 if(!S.ruleRatio)  S.ruleRatio={n:50,w:30,s:20};
 if(!S.currency)   S.currency='CZK';
 if(!S.portfolios) S.portfolios=[];
