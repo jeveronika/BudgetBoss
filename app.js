@@ -1629,10 +1629,10 @@ function renderDefaultFunds(){
     '</div>';
   }
   const peaceHint=refIncome
-    ?'Doporučeno: '+fmt(refIncome)+(incVals.length?' ('+incLabel+')')+'  = 1× měsíční příjem'
+    ?'Doporučeno: '+fmt(refIncome)+(incVals.length?' ('+incLabel+')':'')+' = 1× měsíční příjem'
     :'Nastav = 1× tvůj měsíční příjem';
   const reserveHint=refExp
-    ?'Doporučeno: '+fmt(refExp*3)+' – '+fmt(refExp*6)+(expVals.length?' ('+expLabel+')')+' = 3–6× výdaje'
+    ?'Doporučeno: '+fmt(refExp*3)+' – '+fmt(refExp*6)+(expVals.length?' ('+expLabel+')':'')+' = 3–6× výdaje'
     :'Nastav = 3–6× tvoje měsíční výdaje';
   el.innerHTML=
     fCard(peace,'var(--sage)','Okamžitá záloha — rozbité spotřebiče, neplánované výdaje. Tento fond je k čerpání.',peaceHint)+
