@@ -75,7 +75,9 @@
           <button class="ud-cur-btn" data-cur="PLN" onclick="setCurrency('PLN');syncCurrencyPicker()">zł</button>
         </div>
         <div class="ud-sep"></div>
-        <button class="ud-item" onclick="exportCSV();closeUserMenu()">📥 Exportovat data (CSV)</button>
+        <button class="ud-item" onclick="exportJSON();closeUserMenu()">💾 Záloha dat (JSON)</button>
+        <button class="ud-item" onclick="exportCSV();closeUserMenu()">📥 Export transakcí (CSV)</button>
+        <button class="ud-item" onclick="document.getElementById('jsonImportInput').click();closeUserMenu()">📤 Importovat zálohu (JSON)</button>
         <div class="ud-sep"></div>
         <button class="ud-item danger" onclick="closeUserMenu();resetAllData()">🗑 Smazat všechna data</button>
         <div class="ud-sep"></div>
@@ -486,6 +488,9 @@
     </div>
   </div>
 </div>
+
+<!-- Skrytý input pro import JSON zálohy -->
+<input type="file" id="jsonImportInput" accept=".json" style="display:none" onchange="handleJsonImport(this)">
 
 <script type="module" src="/BudgetQueen/firebase.js"></script>
 <script src="/BudgetQueen/app.js"></script>

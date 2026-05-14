@@ -228,6 +228,57 @@ function exportCSV(){
   a.click(); URL.revokeObjectURL(url);
   toast('CSV staženo ✓','success');
 }
+function exportJSON(){
+  const filename='budget-queen-backup-'+new Date().toISOString().slice(0,10)+'.json';
+  const blob=new Blob([JSON.stringify(S,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download=filename; a.click();
+  URL.revokeObjectURL(url);
+  toast('Záloha uložena: '+filename,'success');
+}
+function handleJsonImport(input){
+  const file=input.files[0]; if(!file) return;
+  input.value=''; // reset — jinak nelze znovu vybrat stejný soubor
+  const reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      const imp=JSON.parse(e.target.result);
+      if(!imp||typeof imp!=='object'||Array.isArray(imp)){
+        toast('Neplatný soubor — není to JSON záloha Budget Queen','warn'); return;
+      }
+      // Shrnutí pro potvrzovací dialog
+      const months=Object.keys(imp.data||{});
+      const txCount=months.reduce((s,k)=>s+(Array.isArray(imp.data[k])?imp.data[k].length:0),0);
+      const goalCount=(imp.goals||[]).filter(g=>!g.isDefault).length;
+      const msg='Importovat zálohu?\n\n'
+        +'📅 '+months.length+' měsíců dat\n'
+        +'💳 '+txCount+' transakcí\n'
+        +'🎯 '+goalCount+' vlastních cílů\n\n'
+        +'⚠️ Toto nahradí všechna tvá aktuální data!';
+      if(!confirm(msg)) return;
+      // Aplikuj importovaná data — jen pole která existují
+      if(imp.cc&&typeof imp.cc==='object')       S.cc=imp.cc;
+      if(imp.data&&typeof imp.data==='object')   S.data=imp.data;
+      if(Array.isArray(imp.goals))               S.goals=imp.goals;
+      if(imp.plans&&typeof imp.plans==='object') S.plans=imp.plans;
+      if(imp.catMeta&&typeof imp.catMeta==='object') S.catMeta=imp.catMeta;
+      if(imp.ruleRatio&&typeof imp.ruleRatio==='object') S.ruleRatio=imp.ruleRatio;
+      if(imp.currency&&['CZK','EUR','USD','GBP','PLN'].includes(imp.currency)) S.currency=imp.currency;
+      if(Array.isArray(imp.portfolios))          S.portfolios=imp.portfolios;
+      if(Array.isArray(imp.recurring))           S.recurring=imp.recurring;
+      // Oprav a doplň případné mezery
+      sanitizeState();
+      ensureDefaultFunds();
+      save();
+      render();
+      toast('Záloha importována ✓ — '+txCount+' transakcí načteno','success');
+    }catch(err){
+      toast('Chyba při čtení souboru: '+(err.message||err),'warn');
+    }
+  };
+  reader.readAsText(file,'utf-8');
+}
 function changeMonth(d){
   cM+=d; if(cM>11){cM=0;cY++;}if(cM<0){cM=11;cY--;}
   // Auto-copy plan to new month if none exists
