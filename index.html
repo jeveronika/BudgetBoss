@@ -528,6 +528,7 @@ input[type=date]{-webkit-appearance:none;appearance:none}
 
 <!-- OVERVIEW -->
 <div id="tab-overview">
+  <div id="onboardingArea"></div>
   <div id="insightArea"></div>
   <div class="overview-cols">
     <div class="panel ov-tx">
@@ -1747,6 +1748,53 @@ function portfolioCard(p){
     '</div></div>';
 }
 
+// ── ONBOARDING ──
+function renderOnboarding(){
+  const el=document.getElementById('onboardingArea');
+  if(!el)return;
+  if(localStorage.getItem('bb8_welcomed')){el.innerHTML='';return;}
+  const t=txs();
+  const hasIncome =t.some(x=>x.type==='income');
+  const hasExpense=t.some(x=>x.type==='expense');
+  const hasGoal   =(S.goals||[]).some(g=>!g.isDefault&&g.target>0);
+  // Auto-dismiss when all 3 done
+  if(hasIncome&&hasExpense&&hasGoal){localStorage.setItem('bb8_welcomed','1');el.innerHTML='';return;}
+  const done=[hasIncome,hasExpense,hasGoal].filter(Boolean).length;
+  function step(ok,num,title,desc,action,btnLabel){
+    return '<div style="display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:1px solid rgba(180,100,80,.12)">'+
+      '<div style="width:28px;height:28px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:.78rem;font-weight:700;margin-top:1px;'+(ok?'background:var(--sage);color:#fff':'background:var(--rose-light);color:var(--rose);border:1.5px solid var(--rose-mid)')+'">'+
+        (ok?'✓':num)+
+      '</div>'+
+      '<div style="flex:1">'+
+        '<div style="font-size:.83rem;font-weight:600;color:var(--text);'+(ok?'opacity:.45;text-decoration:line-through':'')+'">'+title+'</div>'+
+        (!ok?'<div style="font-size:.71rem;color:var(--text2);margin-top:2px;line-height:1.5">'+desc+'</div>'+
+          '<button onclick="'+action+'" style="margin-top:7px;padding:4px 13px;background:var(--rose);border:none;border-radius:20px;color:#fff;font-family:\'Jost\',sans-serif;font-size:.71rem;font-weight:500;cursor:pointer;transition:opacity .2s" onmouseenter="this.style.opacity=\'.8\'" onmouseleave="this.style.opacity=\'1\'">'+btnLabel+'</button>':'')+
+      '</div>'+
+    '</div>';
+  }
+  el.innerHTML=
+    '<div style="background:linear-gradient(135deg,#fef5f3 0%,#f6edf5 100%);border:1px solid var(--rose-mid);border-radius:var(--r);padding:20px 22px;margin-bottom:18px;box-shadow:var(--shadow)">'+
+      '<div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px">'+
+        '<div>'+
+          '<div style="font-family:\'Cormorant Garamond\',serif;font-size:1.18rem;font-weight:600;color:var(--text)">👑 Vítej v Budget Queen!</div>'+
+          '<div style="font-size:.67rem;color:var(--muted);margin-top:3px;letter-spacing:.3px">'+done+' ze 3 kroků hotovo — pojďme na to</div>'+
+        '</div>'+
+        '<button onclick="dismissOnboarding()" title="Přeskočit průvodce" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.72rem;padding:4px 8px;border-radius:8px;white-space:nowrap;transition:color .2s" onmouseenter="this.style.color=\'var(--rose)\'" onmouseleave="this.style.color=\'var(--muted)\'">přeskočit ×</button>'+
+      '</div>'+
+      '<div style="height:4px;background:rgba(180,100,80,.12);border-radius:4px;margin-bottom:14px;overflow:hidden">'+
+        '<div style="height:100%;width:'+Math.round(done/3*100)+'%;background:linear-gradient(90deg,var(--rose-mid),var(--mauve));border-radius:4px;transition:width .8s cubic-bezier(.4,0,.2,1)"></div>'+
+      '</div>'+
+      step(hasIncome,'1','Přidej příjem','Zaznamenej, kolik jsi tento měsíc vydělala — základ pro všechny výpočty.',"openTxModal();setTimeout(function(){setTxType('income')},60)",'+ Přidat příjem')+
+      step(hasExpense,'2','Přidej výdaj','Co jsi tento měsíc utratila? Přidej alespoň jeden výdaj.',"openTxModal()",'+ Přidat výdaj')+
+      step(hasGoal,'3','Nastav si cíl','Na co šetříš? Dovolená, auto, nebo jen finanční polštář.',"switchTab('goals');setTimeout(openGoalModal,80)",'🎯 Přidat cíl')+
+    '</div>';
+}
+function dismissOnboarding(){
+  localStorage.setItem('bb8_welcomed','1');
+  const el=document.getElementById('onboardingArea');
+  if(el) el.innerHTML='';
+}
+
 // ── RENDER ──
 function render(){
   syncCurrencyPicker();
@@ -1817,7 +1865,7 @@ function render(){
     }
   }
 
-  if(activeTab==='overview'){ renderTxList(); renderGoalsMini(); renderInsights(t,income,expense,invest,rate); renderSavingsTrend(); renderDonut('donutSvg2','donutLegend2',expense,t.filter(x=>x.type==='expense')); }
+  if(activeTab==='overview'){ renderOnboarding(); renderTxList(); renderGoalsMini(); renderInsights(t,income,expense,invest,rate); renderSavingsTrend(); renderDonut('donutSvg2','donutLegend2',expense,t.filter(x=>x.type==='expense')); }
   if(activeTab==='budget')   renderBudget(t);
   if(activeTab==='goals')    { renderSavingsBar(); renderDefaultFunds(); renderGoalsList(t); renderGoalsInsights(); }
   if(activeTab==='invest')   renderInvestTab(t);
