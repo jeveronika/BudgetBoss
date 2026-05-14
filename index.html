@@ -1856,7 +1856,7 @@ function doDeleteRecurring(txId,mode){
     _doDeleteSingleTx(txId);
   } else if(mode==='this_future'){
     if(tmpl){let pm=cM-1,py=cY;if(pm<0){pm=11;py--;}tmpl.endKey=`${py}-${pm}`;}
-    _deleteFutureInstances(recId,kn);
+    _deleteFutureInstances(recId,kn+1); // jen budoucí měsíce; aktuální smaže _doDeleteSingleTx
     _doDeleteSingleTx(txId);
   } else if(mode==='future_only'){
     if(tmpl) tmpl.endKey=k;
