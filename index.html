@@ -422,9 +422,20 @@ input[type=date]{-webkit-appearance:none;appearance:none}
 .hs-tt-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
 .hs-tt-row span:nth-child(2){flex:1}
 .hs-tt-pts{font-weight:600;color:var(--muted);white-space:nowrap}
+/* Loading spinner */
+.bq-spinner{width:38px;height:38px;border:3px solid var(--border2);border-top-color:var(--rose);border-radius:50%;animation:bq-spin .75s linear infinite;margin:0 auto}
+@keyframes bq-spin{to{transform:rotate(360deg)}}
 </style>
 </head>
 <body>
+<div id="loadingScreen" style="position:fixed;inset:0;background:var(--bg);display:none;align-items:center;justify-content:center;z-index:999">
+  <div style="text-align:center">
+    <div style="font-family:'Cormorant Garamond',serif;font-size:2.2rem;font-weight:600;line-height:1;margin-bottom:22px">Budget <em style="color:var(--rose);font-style:italic">Queen</em></div>
+    <div class="bq-spinner"></div>
+    <div style="font-size:.72rem;color:var(--muted);margin-top:18px;letter-spacing:.8px">Načítám tvá data…</div>
+  </div>
+</div>
+
 <div id="loginScreen" style="position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:999">
   <div style="text-align:center;padding:44px 40px;background:var(--surface);border-radius:28px;border:1px solid var(--border);box-shadow:0 24px 64px rgba(180,100,80,.18);max-width:380px;width:90%">
     <div style="font-family:'Cormorant Garamond',serif;font-size:3rem;font-weight:600;line-height:1;margin-bottom:6px">Budget <em style="color:var(--rose);font-style:italic">Queen</em></div>
@@ -895,18 +906,16 @@ input[type=date]{-webkit-appearance:none;appearance:none}
     signOut(auth));
 
   onAuthStateChanged(auth, async user => {
-    const loginScreen = document.getElementById('loginScreen');
-    const appEl       = document.querySelector('.app');
-    const logoutBtn   = document.getElementById('btnLogout');
-    const userInfo    = document.getElementById('userInfo');
+    const loginScreen   = document.getElementById('loginScreen');
+    const loadingScreen = document.getElementById('loadingScreen');
+    const appEl         = document.querySelector('.app');
+    const logoutBtn     = document.getElementById('btnLogout');
+    const userInfo      = document.getElementById('userInfo');
 
     if (user) {
-      // Skryj login, zobraz dashboard
-      loginScreen.style.display = 'none';
-      appEl.style.display       = 'block';
-      logoutBtn.style.display   = 'inline-flex';
-      document.getElementById('btnReset').style.display = 'inline-flex';
-      userInfo.textContent      = '👤 ' + user.displayName;
+      // Skryj login, zobraz loading spinner
+      loginScreen.style.display   = 'none';
+      loadingScreen.style.display = 'flex';
 
       try {
         const snap = await getDoc(doc(db, 'users', user.uid));
@@ -924,9 +933,7 @@ input[type=date]{-webkit-appearance:none;appearance:none}
           if (Array.isArray(cs.portfolios)) window.S.portfolios = cs.portfolios;
           // Synchronizuj localStorage s daty z cloudu
           localStorage.setItem('bb8', JSON.stringify(window.S));
-          window.ensureDefaultFunds();  // re-add default funds if cloud data wiped them
-          window.render();
-          window.toast('Vítej zpět, ' + user.displayName + '! ✓', 'success');
+          window.ensureDefaultFunds();
         } else {
           // První přihlášení — vždy začni čistým štítem (ignoruj localStorage)
           const freshState = {
@@ -940,7 +947,6 @@ input[type=date]{-webkit-appearance:none;appearance:none}
           window.ensureDefaultFunds();
           localStorage.setItem('bb8', JSON.stringify(window.S));
           await setDoc(doc(db, 'users', user.uid), { state: window.S });
-          window.render();
           window.toast('Vítej, ' + user.displayName + '! Účet vytvořen ✓', 'success');
         }
       } catch(e) {
@@ -948,17 +954,28 @@ input[type=date]{-webkit-appearance:none;appearance:none}
         window.toast('Chyba načítání dat: ' + (e.code || e.message), 'warn');
       }
 
+      // Data načtena (nebo chyba) — skryj loading, zobraz dashboard
+      loadingScreen.style.display = 'none';
+      appEl.style.display         = 'block';
+      logoutBtn.style.display     = 'inline-flex';
+      document.getElementById('btnReset').style.display = 'inline-flex';
+      userInfo.textContent        = '👤 ' + user.displayName;
+      window.render();
+      if (window.S.data && Object.keys(window.S.data).length)
+        window.toast('Vítej zpět, ' + user.displayName + '! ✓', 'success');
+
       window.saveToCloud = () =>
         setDoc(doc(db, 'users', user.uid), { state: window.S });
 
     } else {
-      // Skryj dashboard, zobraz login
-      loginScreen.style.display = 'flex';
-      appEl.style.display       = 'none';
-      logoutBtn.style.display   = 'none';
+      // Skryj vše, zobraz login
+      loadingScreen.style.display = 'none';
+      loginScreen.style.display   = 'flex';
+      appEl.style.display         = 'none';
+      logoutBtn.style.display     = 'none';
       document.getElementById('btnReset').style.display = 'none';
-      userInfo.textContent      = '';
-      window.saveToCloud        = null;
+      userInfo.textContent        = '';
+      window.saveToCloud          = null;
     }
   });
 
