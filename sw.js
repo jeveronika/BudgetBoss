@@ -10,6 +10,7 @@ const PRECACHE = [
   '/BudgetQueen/',
   '/BudgetQueen/index.html',
   '/BudgetQueen/manifest.json',
+  '/BudgetQueen/icon.svg',
   // Firebase SDK — verzí fixováno, bezpečné cachovat
   'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js',
   'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js',

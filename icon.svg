@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Pozadí -->
+  <rect width="512" height="512" rx="115" fill="#fdf8f5"/>
+  <rect width="512" height="512" rx="115" fill="#d4807a" opacity=".1"/>
+
+  <!-- Koruna — tři kuličky na tyčinkách -->
+  <!-- Středová tyčinka -->
+  <rect x="249" y="120" width="14" height="62" rx="7" fill="#8aaa8e"/>
+  <!-- Levá tyčinka -->
+  <rect x="178" y="142" width="12" height="48" rx="6" fill="#d4807a"/>
+  <!-- Pravá tyčinka -->
+  <rect x="322" y="142" width="12" height="48" rx="6" fill="#b5788a"/>
+
+  <!-- Základní lišta koruny -->
+  <rect x="155" y="186" width="202" height="20" rx="10" fill="#d4807a" opacity=".55"/>
+
+  <!-- Kuličky na vrcholech -->
+  <circle cx="184" cy="138" r="22" fill="#d4807a"/>
+  <circle cx="256" cy="115" r="27" fill="#8aaa8e"/>
+  <circle cx="328" cy="138" r="22" fill="#b5788a"/>
+
+  <!-- Q -->
+  <text x="256" y="415"
+        text-anchor="middle"
+        font-family="Georgia, 'Times New Roman', serif"
+        font-size="248"
+        font-weight="700"
+        font-style="italic"
+        fill="#d4807a">Q</text>
+</svg>
