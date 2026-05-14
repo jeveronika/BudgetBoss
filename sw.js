@@ -1,38 +1,39 @@
 // ╔══════════════════════════════════════════╗
-// ║   Budget Queen — Service Worker v1      ║
+// ║   Budget Queen — Service Worker v2      ║
 // ╚══════════════════════════════════════════╝
-// Strategie: stale-while-revalidate pro app shell
-// Firebase / Google APIs vždy ze sítě
+// v2: přidán Firebase SDK do pre-cache pro plný offline na mobilu
 
-const CACHE = 'bq-v1';
+const CACHE = 'bq-v2';
 
-// Co se předem stáhne při instalaci
+// Co se předem stáhne při instalaci (app shell + Firebase SDK)
 const PRECACHE = [
   '/BudgetQueen/',
   '/BudgetQueen/index.html',
+  '/BudgetQueen/manifest.json',
+  // Firebase SDK — verzí fixováno, bezpečné cachovat
+  'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js',
+  'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js',
+  'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js',
 ];
 
-// Tyto domény vždy ze sítě (Firebase auth, Firestore, Google Fonts)
+// Tyto URL vždy ze sítě — Firebase API volání (nikoli SDK soubory)
 const NETWORK_ONLY_PATTERNS = [
-  'firestore.googleapis.com',
-  'identitytoolkit.googleapis.com',
-  'securetoken.googleapis.com',
-  'accounts.google.com',
-  'firebase',
-  'fonts.googleapis.com',
-  'fonts.gstatic.com',
+  'firestore.googleapis.com',       // Firestore API
+  'identitytoolkit.googleapis.com', // Firebase Auth API
+  'securetoken.googleapis.com',     // Token refresh
+  'accounts.google.com',            // Google OAuth
 ];
 
-// ── INSTALL: předem cachuj app shell ──
+// ── INSTALL: předem cachuj app shell + Firebase SDK ──
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE)
       .then(cache => cache.addAll(PRECACHE))
-      .then(() => self.skipWaiting()) // aktivuj okamžitě bez čekání na reload
+      .then(() => self.skipWaiting())
   );
 });
 
-// ── ACTIVATE: vymaž staré cache ──
+// ── ACTIVATE: vymaž staré cache (bq-v1 a starší) ──
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys()
@@ -41,7 +42,7 @@ self.addEventListener('activate', event => {
           .filter(k => k !== CACHE)
           .map(k => caches.delete(k))
       ))
-      .then(() => self.clients.claim()) // převezmi kontrolu nad stránkami okamžitě
+      .then(() => self.clients.claim())
   );
 });
 
@@ -53,14 +54,13 @@ self.addEventListener('fetch', event => {
   // Pouze GET požadavky
   if (request.method !== 'GET') return;
 
-  // Firebase, Google API → vždy ze sítě, nikdy necachuj
+  // Firebase API volání → vždy ze sítě, nikdy necachuj
   if (NETWORK_ONLY_PATTERNS.some(p => url.includes(p))) return;
 
   // Stale-while-revalidate:
-  // 1. Okamžitě vrať z cache (pokud existuje)
-  // 2. Zároveň aktualizuj cache na pozadí
-  // 3. Pokud cache nemá → čekej na síť
-  // 4. Pokud síť selže a cache má → vrať starou verzi
+  // → okamžitě z cache, aktualizuj na pozadí
+  // → pokud není v cache, čekej na síť
+  // → pokud offline a cache prázdná, vrať app shell
   event.respondWith(
     caches.open(CACHE).then(cache =>
       cache.match(request).then(cached => {
@@ -73,7 +73,6 @@ self.addEventListener('fetch', event => {
           })
           .catch(() => null);
 
-        // Vrať cached verzi okamžitě, nebo čekej na síť
         return cached ?? networkFetch ?? caches.match('/BudgetQueen/');
       })
     )
