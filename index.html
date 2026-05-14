@@ -1143,6 +1143,51 @@ if(!S.catMeta)    S.catMeta={};
 if(!S.ruleRatio)  S.ruleRatio={n:50,w:30,s:20};
 if(!S.currency)   S.currency='CZK';
 if(!S.portfolios) S.portfolios=[];
+// ── STATE SANITIZER — opravuje koruptovaná/neúplná data při načtení ──
+function sanitizeState(){
+  // Top-level typy
+  if(!S.cc||typeof S.cc!=='object')S.cc={expense:[],income:[],investment:[]};
+  ['expense','income','investment'].forEach(k=>{if(!Array.isArray(S.cc[k]))S.cc[k]=[];});
+  if(!S.data||typeof S.data!=='object')S.data={};
+  if(!Array.isArray(S.goals))S.goals=[];
+  if(!S.plans||typeof S.plans!=='object')S.plans={};
+  if(!S.catMeta||typeof S.catMeta!=='object')S.catMeta={};
+  if(!Array.isArray(S.recurring))S.recurring=[];
+  if(!Array.isArray(S.portfolios))S.portfolios=[];
+  if(!S.ruleRatio||typeof S.ruleRatio!=='object')S.ruleRatio={n:50,w:30,s:20};
+  if(!S.currency||!CURR[S.currency])S.currency='CZK';
+  // Sanitizuj transakce v každém měsíci
+  Object.keys(S.data).forEach(k=>{
+    if(!Array.isArray(S.data[k])){S.data[k]=[];return;}
+    S.data[k]=S.data[k].filter(tx=>{
+      if(!tx||typeof tx!=='object')return false;
+      if(!tx.id)tx.id=Date.now()+Math.random();
+      if(!tx.type||!['expense','income','investment'].includes(tx.type))return false;
+      tx.amount=Number(tx.amount)||0;
+      if(!tx.cat||typeof tx.cat!=='string')tx.cat='Ostatní 📦';
+      if(!tx.name||typeof tx.name!=='string')tx.name='—';
+      return true;
+    });
+  });
+  // Sanitizuj cíle
+  S.goals=S.goals.filter(g=>{
+    if(!g||typeof g!=='object')return false;
+    if(!g.id)g.id=Date.now()+Math.random();
+    if(!g.name)g.name='Cíl';
+    g.target=Number(g.target)||0;
+    g.saved=Number(g.saved)||0;
+    return true;
+  });
+  // Sanitizuj opakující se šablony
+  S.recurring=S.recurring.filter(r=>{
+    if(!r||typeof r!=='object')return false;
+    if(!r.id||!r.type||!r.startKey)return false;
+    r.amount=Number(r.amount)||0;
+    if(!Array.isArray(r.skippedKeys))r.skippedKeys=[];
+    return true;
+  });
+}
+sanitizeState();
 // Ensure the two default emergency funds always exist (cannot be deleted)
 function ensureDefaultFunds(){
   if(!S.goals) S.goals=[];
@@ -2060,7 +2105,27 @@ function dismissOnboarding(){
 }
 
 // ── RENDER ──
+// ── ERROR BOUNDARY HELPERS ──
+function showAppError(e){
+  let el=document.getElementById('bq-app-error');
+  if(!el){
+    el=document.createElement('div');el.id='bq-app-error';
+    el.style.cssText='position:fixed;top:0;left:0;right:0;z-index:9999;background:#d4807a;color:#fff;padding:12px 20px;font-family:Jost,sans-serif;font-size:.85rem;display:flex;align-items:center;gap:12px;box-shadow:0 4px 16px rgba(0,0,0,.2)';
+    document.body.appendChild(el);
+  }
+  el.innerHTML='<span>⚠️ Chyba při vykreslení — tvá data jsou v pořádku.</span>'
+    +'<button onclick="location.reload()" style="background:#fff;color:#d4807a;border:none;border-radius:50px;padding:5px 14px;font-size:.8rem;font-weight:600;cursor:pointer;margin-left:auto;flex-shrink:0">Obnovit stránku</button>'
+    +'<button onclick="document.getElementById(\'bq-app-error\').remove()" style="background:rgba(255,255,255,.2);border:none;color:#fff;border-radius:50%;width:24px;height:24px;cursor:pointer;font-size:1.1rem;line-height:1;flex-shrink:0">×</button>';
+  console.error('[BQ] render() crash:',e);
+}
+function safeRenderError(containerId,e){
+  console.error('[BQ] render error in #'+containerId+':',e);
+  const el=document.getElementById(containerId);
+  if(el) el.innerHTML='<div style="padding:16px;text-align:center;color:var(--muted);font-size:.8rem">⚠️ Chyba při načítání — <button onclick="render()" style="background:none;border:none;color:var(--rose);cursor:pointer;text-decoration:underline;font-size:.8rem">zkusit znovu</button></div>';
+}
+
 function render(){
+  try{
   ensureRecurringInstances();
   syncCurrencyPicker();
   document.getElementById('monthLabel').textContent=MONTHS[cM]+' '+cY;
@@ -2131,10 +2196,17 @@ function render(){
   }
 
   renderOnboarding();
-  if(activeTab==='overview'){ renderTxList(); renderGoalsMini(); renderInsights(t,income,expense,invest,rate); renderSavingsTrend(); renderDonut('donutSvg2','donutLegend2',expense,t.filter(x=>x.type==='expense')); }
-  if(activeTab==='budget')   renderBudget(t);
-  if(activeTab==='goals')    { renderSavingsBar(); renderDefaultFunds(); renderGoalsList(t); renderGoalsInsights(); }
-  if(activeTab==='invest')   renderInvestTab(t);
+  if(activeTab==='overview'){
+    try{renderTxList();}catch(e){safeRenderError('txList',e);}
+    try{renderGoalsMini();}catch(e){safeRenderError('goalsMini',e);}
+    try{renderInsights(t,income,expense,invest,rate);}catch(e){safeRenderError('insightArea',e);}
+    try{renderSavingsTrend();}catch(e){safeRenderError('savingsTrend',e);}
+    try{renderDonut('donutSvg2','donutLegend2',expense,t.filter(x=>x.type==='expense'));}catch(e){console.error('[BQ] donut',e);}
+  }
+  if(activeTab==='budget')   {try{renderBudget(t);}catch(e){safeRenderError('budgetList',e);}}
+  if(activeTab==='goals')    {try{renderSavingsBar();renderDefaultFunds();renderGoalsList(t);renderGoalsInsights();}catch(e){safeRenderError('goalsList',e);}}
+  if(activeTab==='invest')   {try{renderInvestTab(t);}catch(e){safeRenderError('portfolioGrid',e);}}
+  }catch(e){showAppError(e);}
 }
 
 function renderTxList(){
@@ -2656,6 +2728,18 @@ function renderGoalsInsights(){
   }
   el.innerHTML=h;
 }
+
+// ── GLOBAL ERROR CAPTURE ──
+window.onerror=function(msg,src,line,col,err){
+  console.error('[BQ] Uncaught:',msg,'@'+(src||'?')+':'+line);
+  if(src&&(src.includes('BudgetQueen')||src.includes('index.html'))){
+    if(typeof showAppError==='function') showAppError(err||new Error(msg));
+  }
+  return false;
+};
+window.addEventListener('unhandledrejection',e=>{
+  console.error('[BQ] Unhandled promise rejection:',e.reason);
+});
 
 // Apply saved tab on first load (sets DOM visibility + active states + calls render)
 switchTab(activeTab);
