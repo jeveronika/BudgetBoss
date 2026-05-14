@@ -1588,10 +1588,24 @@ function renderDefaultFunds(){
   const t=txs();
   const income=t.filter(x=>x.type==='income').reduce((s,x)=>s+x.amount,0);
   const planInc=Object.values(curIncome()).reduce((s,v)=>s+v,0);
-  const refIncome=planInc||income;
   const expense=t.filter(x=>x.type==='expense').reduce((s,x)=>s+x.amount,0);
   const planExp=Object.values(curLimits()).reduce((s,v)=>s+v,0);
-  const refExp=planExp||expense;
+  // Průměr přes všechny měsíce s daty — stabilnější než aktuální měsíc
+  const allKeys=Object.keys(S.data||{});
+  const incVals=[],expVals=[];
+  allKeys.forEach(k=>{
+    const rows=S.data[k]||[];
+    const inc=rows.filter(x=>x.type==='income').reduce((s,x)=>s+x.amount,0);
+    const exp=rows.filter(x=>x.type==='expense').reduce((s,x)=>s+x.amount,0);
+    if(inc>0)incVals.push(inc);
+    if(exp>0)expVals.push(exp);
+  });
+  const avgIncome=incVals.length?Math.round(incVals.reduce((s,v)=>s+v,0)/incVals.length):0;
+  const avgExpense=expVals.length?Math.round(expVals.reduce((s,v)=>s+v,0)/expVals.length):0;
+  const refIncome=avgIncome||planInc||income;
+  const refExp=avgExpense||planExp||expense;
+  const incLabel=incVals.length>1?'průměr '+incVals.length+' měs.':'1 měs. dat';
+  const expLabel=expVals.length>1?'průměr '+expVals.length+' měs.':'1 měs. dat';
   function fCard(g,col,desc,hint){
     if(!g)return '';
     const pct=g.target?Math.min(100,Math.round((g.saved||0)/g.target*100)):0;
@@ -1614,8 +1628,12 @@ function renderDefaultFunds(){
       '<div class="fund-lock">🔒 Záchranný fond · nelze smazat</div>'+
     '</div>';
   }
-  const peaceHint=refIncome?'Doporučeno: '+fmt(refIncome)+' = 1× měsíční příjem':'Nastav = 1× tvůj měsíční příjem';
-  const reserveHint=refExp?'Doporučeno: '+fmt(refExp*3)+' – '+fmt(refExp*6)+' (3–6× výdaje)':'Nastav = 3–6× tvoje měsíční výdaje';
+  const peaceHint=refIncome
+    ?'Doporučeno: '+fmt(refIncome)+(incVals.length?' ('+incLabel+')')+'  = 1× měsíční příjem'
+    :'Nastav = 1× tvůj měsíční příjem';
+  const reserveHint=refExp
+    ?'Doporučeno: '+fmt(refExp*3)+' – '+fmt(refExp*6)+(expVals.length?' ('+expLabel+')')+' = 3–6× výdaje'
+    :'Nastav = 3–6× tvoje měsíční výdaje';
   el.innerHTML=
     fCard(peace,'var(--sage)','Okamžitá záloha — rozbité spotřebiče, neplánované výdaje. Tento fond je k čerpání.',peaceHint)+
     fCard(reserve,'var(--mauve)','Pevná rezerva — přežití 3–6 měsíců bez příjmu. Nesahat, pokud to není opravdu nutné.',reserveHint);
