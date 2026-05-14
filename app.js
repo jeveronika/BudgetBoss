@@ -1706,10 +1706,29 @@ function renderGoalsInsights(){
   if(custom.length){
     const now2=new Date();
     const daysInMonth=new Date(now2.getFullYear(),now2.getMonth()+1,0).getDate();
-    const monthsLeft=Math.max(0.5,(11-now2.getMonth())+(1-now2.getDate()/daysInMonth));
-    const remaining=custom.reduce((s,g)=>s+Math.max(0,g.target-(g.saved||0)),0);
-    if(remaining>0){
-      h+=tip('warn','📅','Vlastní cíle do konce roku','Potřebuješ odkládat <strong>'+fmt(Math.round(remaining/monthsLeft))+' měsíčně</strong> pro splnění všech cílů.');
+    // Fallback: měsíce do konce roku (pro cíle bez vlastního termínu)
+    const eoyMonths=Math.max(0.5,(11-now2.getMonth())+(1-now2.getDate()/daysInMonth));
+    // Per-goal výpočet: každý cíl použije svůj vlastní termín, nebo EOY pokud žádný nemá
+    let totalMonthly=0, anyRemaining=false;
+    const goalLines=[];
+    custom.forEach(g=>{
+      const rem=Math.max(0,g.target-(g.saved||0));
+      if(rem<=0)return;
+      anyRemaining=true;
+      let months=eoyMonths, termLabel='do konce roku';
+      if(g.deadline){
+        const dl=new Date(g.deadline);
+        const diffMonths=(dl.getFullYear()-now2.getFullYear())*12+(dl.getMonth()-now2.getMonth())+(dl.getDate()>=now2.getDate()?0:-1);
+        months=Math.max(0.5,diffMonths);
+        termLabel='do '+dl.getDate()+'. '+MONTHS_GEN[dl.getMonth()];
+      }
+      const monthly=Math.round(rem/months);
+      totalMonthly+=monthly;
+      goalLines.push(esc(g.emoji||'🎯')+' <strong>'+esc(g.name)+'</strong> — '+fmt(monthly)+'/měs. <span style="color:var(--muted);font-size:.75em">('+termLabel+')</span>');
+    });
+    if(anyRemaining){
+      const body=goalLines.join('<br>')+(goalLines.length>1?'<div style="margin-top:6px;padding-top:6px;border-top:1px solid var(--border)">Celkem: <strong>'+fmt(totalMonthly)+'/měs.</strong></div>':'');
+      h+=tip('warn','📅','Vlastní cíle',body);
     }
     const closest=custom.filter(g=>(g.saved||0)<g.target).sort((a,b)=>((b.saved||0)/b.target)-((a.saved||0)/a.target))[0];
     if(closest){
