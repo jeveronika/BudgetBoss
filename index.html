@@ -36,9 +36,9 @@
     <div style="margin-top:16px;display:flex;align-items:flex-start;gap:9px;text-align:left">
       <input type="checkbox" id="gdprCheck" onchange="toggleLoginBtn()"
         style="margin-top:3px;width:15px;height:15px;accent-color:#d4807a;flex-shrink:0;cursor:pointer">
-      <label for="gdprCheck" style="font-size:.73rem;color:var(--text2);line-height:1.55;cursor:pointer">
-        Souhlasím se <span onclick="event.stopPropagation();showPrivacyModal()" style="color:var(--rose);text-decoration:underline;cursor:pointer">zásadami ochrany soukromí</span> a uložením svých finančních dat v Google Firebase.
-      </label>
+      <div style="font-size:.73rem;color:var(--text2);line-height:1.55">
+        Souhlasím se <span onclick="showPrivacyModal()" style="color:var(--rose);text-decoration:underline;cursor:pointer">zásadami ochrany soukromí</span> a uložením svých finančních dat v Google Firebase.
+      </div>
     </div>
     <p style="font-size:.62rem;color:var(--muted);margin-top:10px;line-height:1.5">Přihlašuješ se přes svůj existující Google účet.</p>
   </div>
