@@ -746,6 +746,12 @@ input[type=date]{-webkit-appearance:none;appearance:none}
     <div class="fg" id="catMgrFg" style="margin-bottom:0">
       <button class="add-btn sec" style="width:100%;justify-content:center" onclick="openCatManager()">⚙ Spravovat kategorie</button>
     </div>
+    <div class="fg" id="recurringFg" style="margin-bottom:0;padding:10px 0 2px">
+      <label style="display:flex;align-items:center;gap:9px;cursor:pointer;font-size:.8rem;color:var(--text2)">
+        <input type="checkbox" id="txRecurring" style="width:15px;height:15px;accent-color:var(--rose);cursor:pointer;flex-shrink:0">
+        <span>🔁 Opakovat každý měsíc</span>
+      </label>
+    </div>
     <div class="mactions">
       <button class="mbtn-cancel" onclick="close2('overlayTx')">Zrušit</button>
       <button class="mbtn-ok" onclick="addTransaction()">Přidat</button>
@@ -843,6 +849,14 @@ input[type=date]{-webkit-appearance:none;appearance:none}
   </div>
 </div>
 
+<!-- RECURRING choice modal -->
+<div class="overlay" id="overlayRecurring">
+  <div class="modal-sm">
+    <div class="mtitle" id="recurringChoiceTitle">Opakující se <em>transakce</em></div>
+    <div id="recurringChoiceBody"></div>
+  </div>
+</div>
+
 <!-- PORTFOLIO modal -->
 <div class="overlay" id="overlayPortfolio">
   <div class="modal-sm">
@@ -933,6 +947,7 @@ input[type=date]{-webkit-appearance:none;appearance:none}
           if (cs.ruleRatio)                 window.S.ruleRatio  = cs.ruleRatio;
           if (cs.currency)                  window.S.currency   = cs.currency;
           if (Array.isArray(cs.portfolios)) window.S.portfolios = cs.portfolios;
+          if (Array.isArray(cs.recurring)) window.S.recurring  = cs.recurring;
           // Synchronizuj localStorage s daty z cloudu
           localStorage.setItem('bb8', JSON.stringify(window.S));
           window.ensureDefaultFunds();
@@ -943,7 +958,8 @@ input[type=date]{-webkit-appearance:none;appearance:none}
             data:{},goals:[],plans:{},catMeta:{},
             ruleRatio:{n:50,w:30,s:20},
             currency:'CZK',
-            portfolios:[]
+            portfolios:[],
+            recurring:[]
           };
           window.S = freshState;
           window.ensureDefaultFunds();
@@ -990,7 +1006,8 @@ input[type=date]{-webkit-appearance:none;appearance:none}
         data:{},goals:[],plans:{},catMeta:{},
         ruleRatio:{n:50,w:30,s:20},
         currency:'CZK',
-        portfolios:[]
+        portfolios:[],
+        recurring:[]
       };
       window.S = freshState;
       window.ensureDefaultFunds();
@@ -1018,7 +1035,7 @@ const DEF={
   investment:['ETF 📈','Akcie 📊','Krypto 🪙','Nemovitosti 🏡','Spořicí účet 🏦','Penzijní fond 🎯','Ostatní investice 💎']
 };
 
-var S=JSON.parse(localStorage.getItem('bb8')||'null')||{cc:{expense:[],income:[],investment:[]},data:{},goals:[],plans:{},catMeta:{}};
+var S=JSON.parse(localStorage.getItem('bb8')||'null')||{cc:{expense:[],income:[],investment:[]},data:{},goals:[],plans:{},catMeta:{},recurring:[]};
 let now=new Date(),cY=now.getFullYear(),cM=now.getMonth();
 let txType='expense',txFilter='all',activeTab=localStorage.getItem('bb8_tab')||'overview',editGoalId=null,addGoalId=null;
 
@@ -1030,6 +1047,7 @@ if(S.limits||S.incomePlans){
   delete S.limits; delete S.incomePlans;
 }
 if(!S.plans) S.plans={};
+if(!S.recurring) S.recurring=[];
 save();
 
 let _cloudTimer=null;
@@ -1220,6 +1238,9 @@ function setTxType(t){
   // Hide "Spravovat kategorie" when portfolio picker is active (not relevant)
   const cmf=document.getElementById('catMgrFg');
   if(cmf) cmf.style.display=(isGoal||usePF)?'none':'';
+  // Hide recurring for goal type (goal transactions have their own logic)
+  const rFg=document.getElementById('recurringFg');
+  if(rFg) rFg.style.display=isGoal?'none':'';
   if(isGoal){
     const pick=document.getElementById('txGoalPick');
     pick.innerHTML=S.goals.length?S.goals.map(g=>'<option value="'+g.id+'">'+esc(g.emoji)+' '+esc(g.name)+'</option>').join(''):'<option value="">Nejprve přidej cíl</option>';
@@ -1234,6 +1255,7 @@ function openTxModal(){
   document.getElementById('txDate').value=fd(new Date());
   document.getElementById('txName').value='';
   document.getElementById('txAmount').value='';
+  document.getElementById('txRecurring').checked=false;
   document.getElementById('goalPickRow').style.display='none';
   document.getElementById('catFg').style.display='';
   const lbl=document.getElementById('txAmountLabel');
@@ -1271,21 +1293,23 @@ function addTransaction(){
     S.data[k].push(tx);
     toast(name+' — '+fmt(amount)+(txType==='income'?' ✓':''),'success');
   }
+  // Handle recurring
+  if(document.getElementById('txRecurring')?.checked && txType!=='goal'){
+    const newTx=S.data[k][S.data[k].length-1];
+    const recId='rec_'+Date.now();
+    newTx.recurringId=recId;
+    if(!S.recurring) S.recurring=[];
+    S.recurring.push({id:recId,name:newTx.name,amount:newTx.amount,cat:newTx.cat,type:newTx.type,
+      kind:newTx.kind||null,goalId:newTx.goalId||null,portfolioId:newTx.portfolioId||null,
+      startKey:k,endKey:null,skippedKeys:[]});
+    toast(newTx.name+' — opakuje se každý měsíc 🔁','success');
+  }
   save(); close2('overlayTx'); render();
 }
 function deleteTx(id){
-  const k=ck();
-  const tx=(S.data[k]||[]).find(x=>x.id===id);
-  if(tx&&tx.portfolioId){
-    const pf=(S.portfolios||[]).find(p=>p.id===tx.portfolioId);
-    if(pf) pf.invested=Math.max(0,(pf.invested||0)-tx.amount);
-  }
-  if(tx&&tx.goalId){
-    const g=S.goals.find(g=>g.id===tx.goalId);
-    if(g) g.saved=Math.max(0,(g.saved||0)-tx.amount);
-  }
-  S.data[k]=(S.data[k]||[]).filter(t=>t.id!==id);
-  save(); toast('Smazáno'); render();
+  const k=ck(),tx=(S.data[k]||[]).find(x=>x.id===id);
+  if(tx&&tx.recurringId){showRecurringDeleteChoice(id);return;}
+  _doDeleteSingleTx(id);
 }
 function addCarryoverIncome(){
   // Compute previous month's net balance
@@ -1511,6 +1535,11 @@ function addCatFromMgr(){
 let editTxId=null;
 function openEditTx(id){
   const k=ck(),tx=(S.data[k]||[]).find(x=>x.id===id); if(!tx)return;
+  if(tx.recurringId){showRecurringEditChoice(id);return;}
+  _doOpenEditTx(id);
+}
+function _doOpenEditTx(id){
+  const k=ck(),tx=(S.data[k]||[]).find(x=>x.id===id); if(!tx)return;
   editTxId=id;
   const ne=document.getElementById('editTxName'),ae=document.getElementById('editTxAmount'),de=document.getElementById('editTxDate'),ce=document.getElementById('editTxCat');
   if(!ne||!ae||!de||!ce)return;
@@ -1557,6 +1586,13 @@ function saveEditTx(){
     tx.cat=ce.value;
   }
   if(tx.type==='expense') tx.kind=editKind;
+  // Sync recurring template + delete stale future instances
+  if(recurringEditMode==='this_future'&&tx.recurringId){
+    const tmpl=(S.recurring||[]).find(r=>r.id===tx.recurringId);
+    if(tmpl){tmpl.name=tx.name;tmpl.amount=tx.amount;tmpl.cat=tx.cat;tmpl.type=tx.type;tmpl.kind=tx.kind||null;}
+    _deleteFutureInstances(tx.recurringId,keyToNum(ck())+1);
+  }
+  recurringEditMode=null;
   save(); close2('overlayEditTx'); toast('Upraveno ✓','success'); render();
 }
 
@@ -1750,6 +1786,112 @@ function portfolioCard(p){
     '</div></div>';
 }
 
+// ── RECURRING ──
+function keyToNum(k){const[y,m]=k.split('-').map(Number);return y*12+m;}
+
+function ensureRecurringInstances(){
+  if(!(S.recurring||[]).length) return;
+  const key=ck(), kn=keyToNum(key);
+  let changed=false;
+  S.recurring.forEach((tmpl,i)=>{
+    if(kn<keyToNum(tmpl.startKey)) return;
+    if(tmpl.endKey&&kn>keyToNum(tmpl.endKey)) return;
+    if((tmpl.skippedKeys||[]).includes(key)) return;
+    if((S.data[key]||[]).some(tx=>tx.recurringId===tmpl.id)) return;
+    if(!S.data[key]) S.data[key]=[];
+    const inst={id:Date.now()+i,recurringId:tmpl.id,name:tmpl.name,amount:tmpl.amount,
+      cat:tmpl.cat,type:tmpl.type,date:fd(new Date(cY,cM,1))};
+    if(tmpl.kind) inst.kind=tmpl.kind;
+    if(tmpl.goalId) inst.goalId=tmpl.goalId;
+    if(tmpl.portfolioId) inst.portfolioId=tmpl.portfolioId;
+    S.data[key].push(inst);
+    if(tmpl.goalId){const g=S.goals.find(g=>g.id===tmpl.goalId);if(g)g.saved=Math.min(g.target,(g.saved||0)+tmpl.amount);}
+    if(tmpl.portfolioId){const pf=(S.portfolios||[]).find(p=>p.id===tmpl.portfolioId);if(pf)pf.invested=(pf.invested||0)+tmpl.amount;}
+    changed=true;
+  });
+  if(changed) save();
+}
+
+function _doDeleteSingleTx(id){
+  const k=ck(),tx=(S.data[k]||[]).find(x=>x.id===id); if(!tx) return;
+  if(tx.portfolioId){const pf=(S.portfolios||[]).find(p=>p.id===tx.portfolioId);if(pf)pf.invested=Math.max(0,(pf.invested||0)-tx.amount);}
+  if(tx.goalId){const g=S.goals.find(g=>g.id===tx.goalId);if(g)g.saved=Math.max(0,(g.saved||0)-tx.amount);}
+  S.data[k]=(S.data[k]||[]).filter(t=>t.id!==id);
+  save(); toast('Smazáno'); render();
+}
+
+function _deleteFutureInstances(recId,fromKn){
+  Object.keys(S.data).forEach(mk=>{
+    if(keyToNum(mk)<fromKn) return;
+    S.data[mk]=(S.data[mk]||[]).filter(tx=>{
+      if(tx.recurringId!==recId) return true;
+      if(tx.goalId){const g=S.goals.find(g=>g.id===tx.goalId);if(g)g.saved=Math.max(0,(g.saved||0)-tx.amount);}
+      if(tx.portfolioId){const pf=(S.portfolios||[]).find(p=>p.id===tx.portfolioId);if(pf)pf.invested=Math.max(0,(pf.invested||0)-tx.amount);}
+      return false;
+    });
+  });
+}
+
+function showRecurringDeleteChoice(txId){
+  document.getElementById('recurringChoiceTitle').innerHTML='Smazat opakující se <em>transakci</em>';
+  document.getElementById('recurringChoiceBody').innerHTML=
+    '<p style="font-size:.78rem;color:var(--text2);margin:0 0 16px;line-height:1.6">Tato transakce se opakuje každý měsíc.<br>Co chceš smazat?</p>'+
+    '<div style="display:flex;flex-direction:column;gap:8px">'+
+      '<button class="mbtn-ok" onclick="doDeleteRecurring('+txId+',\'this\')">Jen tuto</button>'+
+      '<button class="mbtn-ok" style="background:var(--mauve)" onclick="doDeleteRecurring('+txId+',\'this_future\')">Tuto a všechny budoucí</button>'+
+      '<button class="mbtn-cancel" style="color:var(--mauve);border-color:var(--mauve)" onclick="doDeleteRecurring('+txId+',\'future_only\')">Jen budoucí (tuto nechat)</button>'+
+      '<button class="mbtn-cancel" onclick="close2(\'overlayRecurring\')">Zrušit</button>'+
+    '</div>';
+  document.getElementById('overlayRecurring').classList.add('open');
+}
+
+function doDeleteRecurring(txId,mode){
+  close2('overlayRecurring');
+  const k=ck(), kn=keyToNum(k);
+  const tx=(S.data[k]||[]).find(x=>x.id===txId); if(!tx) return;
+  const recId=tx.recurringId;
+  const tmpl=(S.recurring||[]).find(r=>r.id===recId);
+  if(mode==='this'){
+    if(tmpl){if(!tmpl.skippedKeys)tmpl.skippedKeys=[];tmpl.skippedKeys.push(k);}
+    _doDeleteSingleTx(txId);
+  } else if(mode==='this_future'){
+    if(tmpl){let pm=cM-1,py=cY;if(pm<0){pm=11;py--;}tmpl.endKey=`${py}-${pm}`;}
+    _deleteFutureInstances(recId,kn);
+    _doDeleteSingleTx(txId);
+  } else if(mode==='future_only'){
+    if(tmpl) tmpl.endKey=k;
+    _deleteFutureInstances(recId,kn+1);
+    save(); toast('Budoucí opakování zastaveno 🔁','success'); render();
+  }
+}
+
+let recurringEditMode=null;
+function showRecurringEditChoice(txId){
+  document.getElementById('recurringChoiceTitle').innerHTML='Upravit opakující se <em>transakci</em>';
+  document.getElementById('recurringChoiceBody').innerHTML=
+    '<p style="font-size:.78rem;color:var(--text2);margin:0 0 16px;line-height:1.6">Tato transakce se opakuje každý měsíc.<br>Co chceš upravit?</p>'+
+    '<div style="display:flex;flex-direction:column;gap:8px">'+
+      '<button class="mbtn-ok" onclick="doEditRecurring('+txId+',\'this\')">Jen tuto</button>'+
+      '<button class="mbtn-ok" style="background:var(--mauve)" onclick="doEditRecurring('+txId+',\'this_future\')">Tuto a všechny budoucí</button>'+
+      '<button class="mbtn-cancel" onclick="close2(\'overlayRecurring\')">Zrušit</button>'+
+    '</div>';
+  document.getElementById('overlayRecurring').classList.add('open');
+}
+
+function doEditRecurring(txId,mode){
+  close2('overlayRecurring');
+  const k=ck(),tx=(S.data[k]||[]).find(x=>x.id===txId); if(!tx) return;
+  if(mode==='this'){
+    const tmpl=(S.recurring||[]).find(r=>r.id===tx.recurringId);
+    if(tmpl){if(!tmpl.skippedKeys)tmpl.skippedKeys=[];tmpl.skippedKeys.push(k);}
+    delete tx.recurringId;
+    save();
+  } else {
+    recurringEditMode='this_future';
+  }
+  _doOpenEditTx(txId);
+}
+
 // ── ONBOARDING ──
 function renderOnboarding(){
   const el=document.getElementById('onboardingArea');
@@ -1801,6 +1943,7 @@ function dismissOnboarding(){
 
 // ── RENDER ──
 function render(){
+  ensureRecurringInstances();
   syncCurrencyPicker();
   document.getElementById('monthLabel').textContent=MONTHS[cM]+' '+cY;
   const t=txs();
@@ -1887,7 +2030,7 @@ function renderTxList(){
     return '<div class="tx-item">'+
       '<div class="tx-icon" style="background:'+bg+'">'+icon(x.cat)+'</div>'+
       '<div class="tx-info"><div class="tx-name">'+esc(x.name)+'</div>'+
-      '<div class="tx-meta"><span>'+esc(cname(x.cat))+'</span>'+(x.date?'<span>'+fmtDate(x.date)+'</span>':'')+(x.kind==='want'?'<span style="color:var(--mauve)">🎉</span>':x.kind==='need'?'<span style="color:var(--sage)">🏠</span>':'')+'</div></div>'+
+      '<div class="tx-meta"><span>'+esc(cname(x.cat))+'</span>'+(x.date?'<span>'+fmtDate(x.date)+'</span>':'')+(x.kind==='want'?'<span style="color:var(--mauve)">🎉</span>':x.kind==='need'?'<span style="color:var(--sage)">🏠</span>':'')+(x.recurringId?'<span title="Opakující se každý měsíc" style="color:var(--rose-mid);font-size:.65rem">🔁</span>':'')+'</div></div>'+
       '<div class="tx-amount '+cls+'">'+pfx+fmt(x.amount)+'</div>'+
       '<div class="tx-actions">'+
         '<button class="tx-act-btn edit-btn" onclick="openEditTx('+x.id+')" title="Upravit">✏</button>'+
