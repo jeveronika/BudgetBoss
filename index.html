@@ -1252,6 +1252,10 @@ function deleteTx(id){
     const pf=(S.portfolios||[]).find(p=>p.id===tx.portfolioId);
     if(pf) pf.invested=Math.max(0,(pf.invested||0)-tx.amount);
   }
+  if(tx&&tx.goalId){
+    const g=S.goals.find(g=>g.id===tx.goalId);
+    if(g) g.saved=Math.max(0,(g.saved||0)-tx.amount);
+  }
   S.data[k]=(S.data[k]||[]).filter(t=>t.id!==id);
   save(); toast('Smazáno'); render();
 }
