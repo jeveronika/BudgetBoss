@@ -221,7 +221,7 @@ function toggleLoginBtn(){
   if(check.checked)localStorage.setItem('bb8_gdpr','1');
 }
 function showPrivacyModal(){
-  document.getElementById('overlayPrivacy').style.display='flex';
+  document.getElementById('overlayPrivacy').classList.add('open');
 }
 // Pokud uživatel již dříve souhlasil, auto-zaškrtni checkbox
 (function initGdpr(){
