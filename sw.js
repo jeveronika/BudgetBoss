@@ -3,12 +3,15 @@
 // ╚══════════════════════════════════════════╝
 // v2: přidán Firebase SDK do pre-cache pro plný offline na mobilu
 
-const CACHE = 'bq-v2';
+const CACHE = 'bq-v3';
 
 // Co se předem stáhne při instalaci (app shell + Firebase SDK)
 const PRECACHE = [
   '/BudgetQueen/',
   '/BudgetQueen/index.html',
+  '/BudgetQueen/style.css',
+  '/BudgetQueen/app.js',
+  '/BudgetQueen/firebase.js',
   '/BudgetQueen/manifest.json',
   '/BudgetQueen/icon.svg',
   // Firebase SDK — verzí fixováno, bezpečné cachovat
