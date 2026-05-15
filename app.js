@@ -373,9 +373,9 @@ function setTxType(t){
   // Hide "Spravovat kategorie" when portfolio picker is active (not relevant)
   const cmf=document.getElementById('catMgrFg');
   if(cmf) cmf.style.display=(isGoal||usePF)?'none':'';
-  // Hide recurring for goal type (goal transactions have their own logic)
+  // Show recurring for all types incl. goal (recurring goal deposits supported)
   const rFg=document.getElementById('recurringFg');
-  if(rFg) rFg.style.display=isGoal?'none':'';
+  if(rFg) rFg.style.display='';
   if(isGoal){
     const pick=document.getElementById('txGoalPick');
     pick.innerHTML=S.goals.length?S.goals.map(g=>'<option value="'+g.id+'">'+esc(g.emoji)+' '+esc(g.name)+'</option>').join(''):'<option value="">Nejprve přidej cíl</option>';
@@ -430,7 +430,7 @@ function addTransaction(){
     toast(name+' — '+fmt(amount)+(txType==='income'?' ✓':''),'success');
   }
   // Handle recurring
-  if(document.getElementById('txRecurring')?.checked && txType!=='goal'){
+  if(document.getElementById('txRecurring')?.checked){
     const newTx=S.data[k][S.data[k].length-1];
     const recId='rec_'+Date.now();
     newTx.recurringId=recId;
@@ -939,6 +939,8 @@ function ensureRecurringInstances(){
     if(tmpl.endKey&&kn>keyToNum(tmpl.endKey)) return;
     if((tmpl.skippedKeys||[]).includes(key)) return;
     if((S.data[key]||[]).some(tx=>tx.recurringId===tmpl.id)) return;
+    // Přeskoč vklad na cíl, který je už splněn
+    if(tmpl.goalId){const g=S.goals.find(g=>g.id===tmpl.goalId);if(g&&(g.saved||0)>=g.target)return;}
     if(!S.data[key]) S.data[key]=[];
     const inst={id:Date.now()+i,recurringId:tmpl.id,name:tmpl.name,amount:tmpl.amount,
       cat:tmpl.cat,type:tmpl.type,date:fd(new Date(cY,cM,1))};
